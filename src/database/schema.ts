@@ -1,6 +1,11 @@
-import { meters } from 'src/meter/meter.schema';
+import {
+  meters,
+  meterSubmeters,
+  meterRelation,
+  submeterRelations,
+} from 'src/meter/meter.schema';
 
 export * from 'src/meter/meter.schema';
-const schema = { meters };
+const schema = { meters, meterSubmeters, meterRelation, submeterRelations };
 
 export default schema;

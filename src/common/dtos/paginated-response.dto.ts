@@ -1,23 +1,29 @@
-import { ApiResponseProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class PaginatedDataMeta {
-  @ApiResponseProperty({
-    type: 'string',
-    example: 'b0e41177-cafa-4cb1-8db6-ed099b1a88aa',
-  })
-  nextCursor: string;
-
-  @ApiResponseProperty({
-    type: 'number',
-    example: 20,
-  })
-  pageSize: number;
-}
 export class PaginatedResponseDto<T> {
   data: T[];
 
-  @ApiResponseProperty({
-    type: PaginatedDataMeta,
+  @ApiProperty({
+    description: 'Total number of items',
+    example: 100,
   })
-  meta: PaginatedDataMeta;
+  total: number;
+
+  @ApiProperty({
+    description: 'Current page number',
+    example: 1,
+  })
+  page: number;
+
+  @ApiProperty({
+    description: 'Number of items per page',
+    example: 20,
+  })
+  pageSize: number;
+
+  @ApiProperty({
+    description: 'Indicates if there are more pages',
+    example: true,
+  })
+  hasMore: boolean;
 }
