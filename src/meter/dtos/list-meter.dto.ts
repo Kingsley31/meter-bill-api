@@ -12,7 +12,7 @@ import { MeterPurpose, MeterType } from '../enums';
 
 export class ListMeterQueryDto {
   @ApiPropertyOptional({
-    description: 'Search term for meter number or customer name',
+    description: 'Search term for meter number or customer name or location',
     example: '1234567890',
   })
   @IsOptional()
@@ -45,31 +45,6 @@ export class ListMeterQueryDto {
   @IsOptional()
   @IsEnum(MeterPurpose)
   purpose?: MeterPurpose;
-
-  @ApiPropertyOptional({
-    description: 'Meter number to filter',
-    example: '1234567890',
-  })
-  @IsOptional()
-  @IsString()
-  meterNumber?: string;
-
-  @ApiPropertyOptional({
-    description: 'Customer ID to filter',
-    format: 'uuid',
-    example: 'e8b9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
-  })
-  @IsOptional()
-  @IsUUID()
-  customerId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Customer name to filter',
-    example: 'John Doe',
-  })
-  @IsOptional()
-  @IsString()
-  customerName?: string;
 
   @ApiPropertyOptional({
     description: 'Page number for pagination',

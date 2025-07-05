@@ -59,6 +59,14 @@ export class CreateMeterDto {
   areaName: string;
 
   @ApiProperty({
+    description: 'Location of the meter',
+    example: 'Block 5, Flat 2, Ikeja',
+  })
+  @IsNotEmpty()
+  @IsString()
+  location: string;
+
+  @ApiProperty({
     description: 'CT rating of the meter',
     type: Number,
     example: 100,

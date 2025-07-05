@@ -17,6 +17,7 @@ export const meters = pgTable('meters', {
   isActive: boolean('is_active').default(true).notNull(),
   areaId: uuid('area_id').notNull(),
   areaName: varchar('area_name').notNull(),
+  location: varchar('location').notNull().default('none'), // location of the meter, e.g., building name, street
   customerId: uuid('customer_id'),
   customerName: varchar('customer_name'),
   ctRating: numeric('ct_rating').notNull(),
@@ -28,6 +29,7 @@ export const meters = pgTable('meters', {
   maxKwhReading: numeric('max_kwh_reading'),
   tariff: numeric('tariff'),
   currentKwhReading: numeric('current_kwh_reading'),
+  currentKwhReadingDate: timestamp('current_kwh_reading_date'),
   lastBillKwhConsumption: numeric('last_bill_kwh_consumption'),
   createdAt: timestamp('created_at')
     .default(sql`now()`)

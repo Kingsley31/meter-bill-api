@@ -54,6 +54,12 @@ export class MeterResponseDto {
   areaName?: string | null;
 
   @ApiProperty({
+    description: 'Location of the meter',
+    example: 'Block 5, Flat 2, Ikeja',
+  })
+  location: string;
+
+  @ApiProperty({
     description: 'CT multiplier factor',
     type: Number,
     example: 2.5,
@@ -149,6 +155,15 @@ export class MeterResponseDto {
   currentKwhReading: number | null;
 
   @ApiPropertyOptional({
+    description: 'Current kWh reading date of the meter',
+    type: String,
+    format: 'date-time',
+    example: '2024-06-28T15:00:00.000Z',
+    nullable: true,
+  })
+  currentKwhReadingDate?: Date | null;
+
+  @ApiPropertyOptional({
     description: 'Last billed kWh consumption',
     type: Number,
     example: 500.25,
@@ -189,5 +204,3 @@ export class MeterResponseDto {
   })
   deletedAt?: Date | null;
 }
-
-export class ActualSubMeterResponseDto extends MeterResponseDto {}
