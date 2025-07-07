@@ -11,6 +11,7 @@ import { and, eq, ilike, count, or, isNull, lt, sum, avg } from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterType, MeterPurpose, Operaor } from './enums';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
+import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 
 @Injectable()
 export class MeterService {
@@ -348,5 +349,27 @@ export class MeterService {
           ? Number(meter.lastBillKwhConsumption)
           : null,
     } as MeterResponseDto;
+  }
+
+  async updateStatus(
+    id: string,
+    updateStatusDto: UpdateMeterStatusDto,
+  ): Promise<boolean> {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, id),
+      with: {
+        subMeters: true,
+      },
+    });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    await this.db
+      .update(meters)
+      .set({
+        isActive: updateStatusDto.isActive,
+      })
+      .where(eq(meters.id, id));
+    return true;
   }
 }

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBody,
   ApiCreatedResponse,
@@ -15,6 +23,7 @@ import { ListMeterQueryDto } from './dtos/list-meter.dto';
 import { ApiPaginatedResponse } from 'src/common/decorators/api-paginated-response';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
+import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -91,5 +100,27 @@ export class MeterController {
   })
   async getMeterById(@Param('id') id: string): Promise<MeterResponseDto> {
     return this.meterService.getMeterById({ meterId: id });
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Change meter status',
+    description: 'Updates the status of a meter to active or inactive.',
+  })
+  @ApiOkResponse({
+    description: 'The meter status has been successfully updated.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() updateMeterStatusDto: UpdateMeterStatusDto,
+  ) {
+    return this.meterService.updateStatus(id, updateMeterStatusDto);
   }
 }
