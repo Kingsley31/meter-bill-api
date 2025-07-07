@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import {
   ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { MeterService } from './meter.service';
@@ -71,5 +72,24 @@ export class MeterController {
   })
   async getMeterStats(): Promise<MeterStatsResponseDto> {
     return this.meterService.getMeterStats();
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get meter by ID',
+    description: 'Returns a meter.',
+  })
+  @ApiOkResponse({
+    description: 'The meter have been successfully retrieved.',
+    type: MeterResponseDto,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  async getMeterById(@Param('id') id: string): Promise<MeterResponseDto> {
+    return this.meterService.getMeterById({ meterId: id });
   }
 }
