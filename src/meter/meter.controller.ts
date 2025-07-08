@@ -24,6 +24,7 @@ import { ApiPaginatedResponse } from 'src/common/decorators/api-paginated-respon
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
+import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -122,5 +123,28 @@ export class MeterController {
     @Body() updateMeterStatusDto: UpdateMeterStatusDto,
   ) {
     return this.meterService.updateStatus(id, updateMeterStatusDto);
+  }
+
+  @Patch(':id/area')
+  @ApiOperation({
+    summary: 'Assign Meter to an area',
+    description:
+      'Assigns a meter to a selected area and updates meter location.',
+  })
+  @ApiOkResponse({
+    description: 'The meter area and location has been successfully updated.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  updateArea(
+    @Param('id') id: string,
+    @Body() updateMeterAreaDto: UpdateMeterAreaDto,
+  ) {
+    return this.meterService.updateArea(id, updateMeterAreaDto);
   }
 }

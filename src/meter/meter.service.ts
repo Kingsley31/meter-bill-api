@@ -12,6 +12,7 @@ import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterType, MeterPurpose, Operaor } from './enums';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
+import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 
 @Injectable()
 export class MeterService {
@@ -368,6 +369,27 @@ export class MeterService {
       .update(meters)
       .set({
         isActive: updateStatusDto.isActive,
+      })
+      .where(eq(meters.id, id));
+    return true;
+  }
+
+  async updateArea(id: string, updateMeterAreaDto: UpdateMeterAreaDto) {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, id),
+      with: {
+        subMeters: true,
+      },
+    });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    await this.db
+      .update(meters)
+      .set({
+        areaId: updateMeterAreaDto.areaId,
+        areaName: updateMeterAreaDto.areaName,
+        location: updateMeterAreaDto.location,
       })
       .where(eq(meters.id, id));
     return true;
