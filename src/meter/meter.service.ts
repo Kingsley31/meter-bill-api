@@ -13,6 +13,7 @@ import { MeterType, MeterPurpose, Operaor } from './enums';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
+import { UpdateMeterCustomerDto } from './dtos/update-meter-customer.dto';
 
 @Injectable()
 export class MeterService {
@@ -390,6 +391,29 @@ export class MeterService {
         areaId: updateMeterAreaDto.areaId,
         areaName: updateMeterAreaDto.areaName,
         location: updateMeterAreaDto.location,
+      })
+      .where(eq(meters.id, id));
+    return true;
+  }
+
+  async updateCustomer(
+    id: string,
+    updateMeterCustomerDto: UpdateMeterCustomerDto,
+  ) {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, id),
+      with: {
+        subMeters: true,
+      },
+    });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    await this.db
+      .update(meters)
+      .set({
+        customerId: updateMeterCustomerDto.customerId,
+        customerName: updateMeterCustomerDto.customerName,
       })
       .where(eq(meters.id, id));
     return true;
