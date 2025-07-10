@@ -26,6 +26,7 @@ import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 import { UpdateMeterCustomerDto } from './dtos/update-meter-customer.dto';
+import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -169,5 +170,27 @@ export class MeterController {
     @Body() updateMeterCustomerDto: UpdateMeterCustomerDto,
   ) {
     return this.meterService.updateCustomer(id, updateMeterCustomerDto);
+  }
+
+  @Patch(':id/tariff')
+  @ApiOperation({
+    summary: 'Set Meter tariff',
+    description: 'Set a tariff for a single meter.',
+  })
+  @ApiOkResponse({
+    description: 'The meter tariff has been successfully set.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  setTariff(
+    @Param('id') id: string,
+    @Body() setMeterTariffDto: SetMeterTariffDto,
+  ) {
+    return this.meterService.setTariff(id, setMeterTariffDto);
   }
 }

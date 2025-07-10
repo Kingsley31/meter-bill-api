@@ -14,6 +14,7 @@ import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 import { UpdateMeterCustomerDto } from './dtos/update-meter-customer.dto';
+import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
 
 @Injectable()
 export class MeterService {
@@ -414,6 +415,25 @@ export class MeterService {
       .set({
         customerId: updateMeterCustomerDto.customerId,
         customerName: updateMeterCustomerDto.customerName,
+      })
+      .where(eq(meters.id, id));
+    return true;
+  }
+
+  async setTariff(id: string, setMeterTariffDto: SetMeterTariffDto) {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, id),
+      with: {
+        subMeters: true,
+      },
+    });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    await this.db
+      .update(meters)
+      .set({
+        tariff: setMeterTariffDto.tariff.toString(),
       })
       .where(eq(meters.id, id));
     return true;
