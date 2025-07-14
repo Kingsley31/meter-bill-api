@@ -1,9 +1,99 @@
 {
-  "id": "c90efbdc-767a-46e7-b36b-410cd86d0863",
-  "prevId": "084c58af-64f6-451d-9800-fdc7fe42a13d",
+  "id": "271abd5c-2e6e-47ea-b75b-86cfc1f09006",
+  "prevId": "c90efbdc-767a-46e7-b36b-410cd86d0863",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.meter_readings": {
+      "name": "meter_readings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "meter_number": {
+          "name": "meter_number",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meter_id": {
+          "name": "meter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reading_date": {
+          "name": "reading_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kwh_reading": {
+          "name": "kwh_reading",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kwh_consumption": {
+          "name": "kwh_consumption",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meter_image": {
+          "name": "meter_image",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meter_readings_meter_id_meters_id_fk": {
+          "name": "meter_readings_meter_id_meters_id_fk",
+          "tableFrom": "meter_readings",
+          "tableTo": "meters",
+          "columnsFrom": [
+            "meter_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.meter_sub_meters": {
       "name": "meter_sub_meters",
       "schema": "",
@@ -125,6 +215,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "location": {
+          "name": "location",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
         "customer_id": {
           "name": "customer_id",
           "type": "uuid",
@@ -194,6 +291,30 @@
         },
         "current_kwh_reading_date": {
           "name": "current_kwh_reading_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_kwh_consumption": {
+          "name": "current_kwh_consumption",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_kwh_reading": {
+          "name": "previous_kwh_reading",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_kwh_consumption": {
+          "name": "previous_kwh_consumption",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_kwh_reading_date": {
+          "name": "previous_kwh_reading_date",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false

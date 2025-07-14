@@ -43,6 +43,13 @@
       "when": 1751709163115,
       "tag": "0005_lumpy_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1752430764304,
+      "tag": "0006_busy_crusher_hogan",
+      "breakpoints": true
     }
   ]
 }

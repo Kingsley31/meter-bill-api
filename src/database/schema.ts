@@ -3,9 +3,19 @@ import {
   meterSubmeters,
   meterRelation,
   submeterRelations,
+  meterReadings,
+  meterReadingRelations,
 } from 'src/meter/meter.schema';
 
 export * from 'src/meter/meter.schema';
-const schema = { meters, meterSubmeters, meterRelation, submeterRelations };
+
+const schema = {
+  meters,
+  meterSubmeters,
+  meterRelation,
+  submeterRelations,
+  meterReadings,
+  meterReadingRelations,
+};
 
 export default schema;

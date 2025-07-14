@@ -30,6 +30,10 @@ export const meters = pgTable('meters', {
   tariff: numeric('tariff'),
   currentKwhReading: numeric('current_kwh_reading'),
   currentKwhReadingDate: timestamp('current_kwh_reading_date'),
+  currentKwhConsumption: numeric('current_kwh_consumption'),
+  previousKwhReading: numeric('previous_kwh_reading'),
+  previousKwhConsumption: numeric('previous_kwh_consumption'),
+  previousKwhReadingDate: timestamp('previous_kwh_reading_date'),
   lastBillKwhConsumption: numeric('last_bill_kwh_consumption'),
   createdAt: timestamp('created_at')
     .default(sql`now()`)
@@ -60,8 +64,31 @@ export const meterSubmeters = pgTable('meter_sub_meters', {
   deletedAt: timestamp('deleted_at'),
 });
 
+// Define Meter Reading Table
+export const meterReadings = pgTable('meter_readings', {
+  id: uuid('id')
+    .default(sql`gen_random_uuid()`)
+    .primaryKey(),
+  meterNumber: varchar('meter_number').notNull(),
+  meterId: uuid('meter_id')
+    .notNull()
+    .references(() => meters.id),
+  readingDate: timestamp('reading_date').notNull(),
+  kwhReading: numeric('kwh_reading').notNull(),
+  kwhConsumption: numeric('kwh_consumption').notNull(), // consumption for the period
+  meterImage: varchar('meter_image').notNull(), // URL or path to the meter image
+  createdAt: timestamp('created_at')
+    .default(sql`now()`)
+    .notNull(),
+  updatedAt: timestamp('updated_at')
+    .default(sql`now()`)
+    .notNull(),
+  deletedAt: timestamp('deleted_at'),
+});
+
 export const meterRelation = relations(meters, ({ many }) => ({
   subMeters: many(meterSubmeters, { relationName: 'parent_submeters' }),
+  readings: many(meterReadings),
 }));
 
 export const submeterRelations = relations(meterSubmeters, ({ one }) => ({
@@ -74,5 +101,12 @@ export const submeterRelations = relations(meterSubmeters, ({ one }) => ({
     fields: [meterSubmeters.subMeterId],
     references: [meters.id],
     relationName: 'submeter',
+  }),
+}));
+
+export const meterReadingRelations = relations(meterReadings, ({ one }) => ({
+  meter: one(meters, {
+    fields: [meterReadings.meterId],
+    references: [meters.id],
   }),
 }));

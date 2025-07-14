@@ -15,11 +15,16 @@ import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 import { UpdateMeterCustomerDto } from './dtos/update-meter-customer.dto';
 import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
+import { CreateMeterReadingDto } from './dtos/create-meter-reading.dto';
+import { MeterReadingService } from './meter-reading.service';
+import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
+import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
 
 @Injectable()
 export class MeterService {
   constructor(
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly meterReadingService: MeterReadingService,
   ) {}
 
   async createMeter(createMeterDto: CreateMeterDto): Promise<MeterResponseDto> {
@@ -437,5 +442,93 @@ export class MeterService {
       })
       .where(eq(meters.id, id));
     return true;
+  }
+
+  async createReading(
+    id: string,
+    createMeterReadingDto: CreateMeterReadingDto,
+  ) {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, id),
+    });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    const currentKwhReading = meter.currentKwhReading
+      ? Number(meter.currentKwhReading)
+      : 0;
+    if (
+      currentKwhReading > createMeterReadingDto.kwhReading &&
+      !meter.hasMaxKwhReading
+    ) {
+      throw new BadRequestException(
+        'Invalid kwh reading, meter does not have max kwh reading and does not reset.',
+      );
+    }
+
+    //Ensure that selected date is not before the current reading date
+    const currentReadingDate = meter.currentKwhReadingDate;
+    if (
+      currentReadingDate &&
+      currentReadingDate > createMeterReadingDto.readingDate
+    ) {
+      throw new BadRequestException(
+        'Invalid reading date, reading date must be after the last meter reading date.',
+      );
+    }
+
+    let kwhConsumption =
+      (createMeterReadingDto.kwhReading - currentKwhReading) *
+      Number(meter.ctMultiplierFactor);
+    if (currentKwhReading > createMeterReadingDto.kwhReading) {
+      kwhConsumption =
+        (createMeterReadingDto.kwhReading +
+          Number(meter.maxKwhReading) +
+          1 -
+          currentKwhReading) *
+        Number(meter.ctMultiplierFactor);
+    }
+
+    await this.meterReadingService.createReading({
+      ...createMeterReadingDto,
+      kwhConsumption,
+      meterId: meter.id,
+      meterNumber: meter.meterNumber,
+    });
+    await this.db
+      .update(meters)
+      .set({
+        currentKwhReading: createMeterReadingDto.kwhReading.toString(),
+        currentKwhReadingDate: createMeterReadingDto.readingDate,
+        currentKwhConsumption: String(kwhConsumption),
+        previousKwhReading: String(currentKwhReading),
+        previousKwhConsumption: meter.currentKwhConsumption,
+        previousKwhReadingDate: meter.currentKwhReadingDate,
+      })
+      .where(eq(meters.id, id));
+    return true;
+  }
+
+  async listMeterReadings(
+    id: string,
+    filter: ListMeterReadingQueryDto,
+  ): Promise<PaginatedResponseDto<MeterReadingResponseDto>> {
+    const result = await this.meterReadingService.getReadingsByMeterId(id, {
+      ...filter,
+      readingStartDate: filter.startReadingDate,
+      readingEndDate: filter.endReadingDate,
+      createdAtStart: filter.startCreatedAt,
+      createdAtEnd: filter.endCreatedAt,
+    });
+    return {
+      ...result,
+      data: result.data.map((reading) => {
+        return {
+          ...reading,
+          kwhReading: Number(reading.kwhReading),
+          kwhConsumption: Number(reading.kwhConsumption),
+        };
+      }),
+    };
   }
 }

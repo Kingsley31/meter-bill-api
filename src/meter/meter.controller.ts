@@ -27,6 +27,9 @@ import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 import { UpdateMeterCustomerDto } from './dtos/update-meter-customer.dto';
 import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
+import { CreateMeterReadingDto } from './dtos/create-meter-reading.dto';
+import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
+import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -192,5 +195,41 @@ export class MeterController {
     @Body() setMeterTariffDto: SetMeterTariffDto,
   ) {
     return this.meterService.setTariff(id, setMeterTariffDto);
+  }
+
+  @Post(':id/readings')
+  @ApiOperation({
+    summary: 'Create a meter reading',
+    description: 'Create the current reading of a meter.',
+  })
+  @ApiOkResponse({
+    description: 'The meter reading has been successfully created.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  storeReading(
+    @Param('id') id: string,
+    @Body() createMeterReadingDto: CreateMeterReadingDto,
+  ) {
+    return this.meterService.createReading(id, createMeterReadingDto);
+  }
+
+  @Get(':id/readings')
+  @ApiOperation({
+    summary: 'List the readings of a meter',
+    description:
+      'Returns a paginated list of a meter readings based on the provided filters.',
+  })
+  @ApiPaginatedResponse({ model: MeterReadingResponseDto })
+  async listMeterReadings(
+    @Param('id') id: string,
+    @Query() filter: ListMeterReadingQueryDto,
+  ): Promise<PaginatedResponseDto<MeterReadingResponseDto>> {
+    return this.meterService.listMeterReadings(id, filter);
   }
 }
