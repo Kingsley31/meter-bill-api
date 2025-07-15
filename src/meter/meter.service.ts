@@ -7,7 +7,17 @@ import { CreateMeterDto } from './dtos/create-meter.dto';
 import { MeterResponseDto } from './dtos/meter.response.dto';
 import { ListMeterQueryDto } from './dtos/list-meter.dto';
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
-import { and, eq, ilike, count, or, isNull, lt, sum, avg } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  ilike,
+  count,
+  or,
+  isNull,
+  sum,
+  avg,
+  notBetween,
+} from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterType, MeterPurpose, Operaor } from './enums';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
@@ -19,6 +29,11 @@ import { CreateMeterReadingDto } from './dtos/create-meter-reading.dto';
 import { MeterReadingService } from './meter-reading.service';
 import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
 import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
+import {
+  ReferenceMeterWithConsumption,
+  SubmeterWithConsumption,
+} from './types';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class MeterService {
@@ -198,8 +213,11 @@ export class MeterService {
     where.push(
       or(
         isNull(meters.currentKwhReadingDate),
-        lt(meters.currentKwhReadingDate, new Date(startDate)),
-        lt(meters.currentKwhReadingDate, new Date(endDate)),
+        notBetween(
+          meters.currentKwhReadingDate,
+          new Date(startDate),
+          new Date(endDate),
+        ),
       ),
     );
 
@@ -507,6 +525,117 @@ export class MeterService {
       })
       .where(eq(meters.id, id));
     return true;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async calculateDerivedMetersConsumption() {
+    const windowHours = 24;
+    const now = Date.now();
+    const pastWindowHour = new Date(now - windowHours * 60 * 60 * 1000);
+    const derivedMeters = await this.db.query.meters.findMany({
+      where: and(
+        eq(meters.type, MeterType.DERIVED),
+        or(
+          isNull(meters.currentKwhReadingDate),
+          notBetween(
+            meters.currentKwhReadingDate,
+            pastWindowHour,
+            new Date(now),
+          ),
+        ),
+      ),
+      with: { subMeters: true },
+    });
+    const calculationPromise = derivedMeters.map(async (derivedMeter) => {
+      const calculationMeterIds = derivedMeter.subMeters.map(
+        (sub) => sub.subMeterId,
+      );
+      calculationMeterIds.push(derivedMeter.calculationReferenceMeterId!);
+      const totals =
+        await this.meterReadingService.getTotalConsumptionForMeters(
+          calculationMeterIds,
+          pastWindowHour,
+          new Date(now),
+        );
+      // Stop Calculation for this derived meter if reference meter
+      // and all submeters where not read within same period
+      if (!(totals.length == calculationMeterIds.length)) return;
+
+      const submeterWithConsumption = derivedMeter.subMeters.map((sub) => {
+        return {
+          subMeterId: sub.subMeterId,
+          operator: sub.operator,
+          kwhConsumption: Number(
+            totals.find((total) => total.meterId == sub.subMeterId)!
+              .totalConsumption,
+          ),
+        };
+      });
+      const referenceMeterWithConsumption: ReferenceMeterWithConsumption = {
+        referenceMeterId: derivedMeter.calculationReferenceMeterId!,
+        kwhConsumption: Number(
+          totals.find(
+            (total) =>
+              total.meterId == derivedMeter.calculationReferenceMeterId,
+          )!.totalConsumption,
+        ),
+      };
+      const currentKwhReading = derivedMeter.currentKwhReading
+        ? Number(derivedMeter.currentKwhReading)
+        : 0;
+      const kwhConsumption = this.calculateDerivedMeterConsumption(
+        submeterWithConsumption,
+        referenceMeterWithConsumption,
+      );
+      await this.meterReadingService.createReading({
+        meterImage: 'N/A',
+        kwhReading: 0,
+        readingDate: new Date(now),
+        kwhConsumption,
+        meterId: derivedMeter.id,
+        meterNumber: derivedMeter.meterNumber,
+      });
+      await this.db
+        .update(meters)
+        .set({
+          currentKwhReading: '0',
+          currentKwhReadingDate: new Date(now),
+          currentKwhConsumption: String(kwhConsumption),
+          previousKwhReading: String(currentKwhReading),
+          previousKwhConsumption: derivedMeter.currentKwhConsumption,
+          previousKwhReadingDate: derivedMeter.currentKwhReadingDate,
+        })
+        .where(eq(meters.id, derivedMeter.id));
+    });
+    await Promise.all(calculationPromise);
+  }
+
+  calculateDerivedMeterConsumption(
+    submeters: SubmeterWithConsumption[],
+    referenceMeter: ReferenceMeterWithConsumption,
+  ): number {
+    let kwhConsumption = 0;
+    submeters.forEach((sub) => {
+      switch (sub.operator as Operaor) {
+        case Operaor.ADD:
+          kwhConsumption =
+            kwhConsumption +
+            (referenceMeter.kwhConsumption + sub.kwhConsumption);
+          break;
+        case Operaor.MINUS:
+          kwhConsumption =
+            kwhConsumption +
+            (referenceMeter.kwhConsumption - sub.kwhConsumption);
+          break;
+        case Operaor.MULTIPLICATOR:
+          kwhConsumption =
+            kwhConsumption + referenceMeter.kwhConsumption * sub.kwhConsumption;
+          break;
+        default:
+          break;
+      }
+    });
+    return kwhConsumption;
   }
 
   async listMeterReadings(

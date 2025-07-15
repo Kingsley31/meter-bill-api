@@ -3,8 +3,9 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE } from 'src/database/constants';
 import schema from 'src/database/schema';
 import { meterReadings } from './meter.schema';
-import { and, between, count, eq, or } from 'drizzle-orm';
+import { and, between, count, eq, inArray, or, sql } from 'drizzle-orm';
 import { FileService } from 'src/file/file.service';
+import { TotalConsumptionResult } from './types';
 
 @Injectable()
 export class MeterReadingService {
@@ -102,5 +103,27 @@ export class MeterReadingService {
       pageSize: pageSize,
       hasMore: totalCount > page * pageSize,
     };
+  }
+
+  async getTotalConsumptionForMeters(
+    meterIds: string[],
+    startDate: Date,
+    endDate: Date,
+  ): Promise<TotalConsumptionResult[]> {
+    const result = await this.db
+      .select({
+        meterId: meterReadings.meterId,
+        totalConsumption: sql<string>`SUM(${meterReadings.kwhConsumption})`,
+      })
+      .from(meterReadings)
+      .where(
+        and(
+          inArray(meterReadings.meterId, meterIds),
+          between(meterReadings.readingDate, startDate, endDate),
+        ),
+      )
+      .groupBy(meterReadings.meterId);
+
+    return result;
   }
 }
