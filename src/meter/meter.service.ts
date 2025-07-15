@@ -17,6 +17,7 @@ import {
   sum,
   avg,
   notBetween,
+  inArray,
 } from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterType, MeterPurpose, Operaor } from './enums';
@@ -265,6 +266,21 @@ export class MeterService {
           meter.currentKwhReading !== undefined
             ? Number(meter.currentKwhReading)
             : null,
+        currentKwhConsumption:
+          meter.currentKwhConsumption !== null &&
+          meter.currentKwhConsumption !== undefined
+            ? Number(meter.currentKwhConsumption)
+            : null,
+        previousKwhReading:
+          meter.previousKwhReading !== null &&
+          meter.previousKwhReading !== undefined
+            ? Number(meter.previousKwhReading)
+            : null,
+        previousKwhConsumption:
+          meter.previousKwhConsumption !== null &&
+          meter.previousKwhConsumption !== undefined
+            ? Number(meter.previousKwhConsumption)
+            : null,
         lastBillKwhConsumption:
           meter.lastBillKwhConsumption !== null &&
           meter.lastBillKwhConsumption !== undefined
@@ -375,6 +391,61 @@ export class MeterService {
           ? Number(meter.lastBillKwhConsumption)
           : null,
     } as MeterResponseDto;
+  }
+
+  async listMeterSubMeters(id: string): Promise<MeterResponseDto[]> {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, id),
+      with: {
+        subMeters: true,
+      },
+    });
+    const subMeterIds = meter?.subMeters.map((sub) => sub.subMeterId);
+    if (!subMeterIds) throw new BadRequestException('No sub meters found');
+    const subMeters = await this.db.query.meters.findMany({
+      where: inArray(meters.id, subMeterIds),
+    });
+    return subMeters.map((sub) => {
+      return {
+        ...sub,
+        ctRating: sub.ctRating !== null ? Number(sub.ctRating) : 0,
+        ctMultiplierFactor:
+          sub.ctMultiplierFactor !== null ? Number(sub.ctMultiplierFactor) : 0,
+        maxKwhReading:
+          sub.maxKwhReading !== null ? Number(sub.maxKwhReading) : 0,
+        subMeters: [],
+        purpose: sub.purpose as MeterPurpose,
+        type: sub.type as MeterType,
+        tariff:
+          sub.tariff !== null && sub.tariff !== undefined
+            ? Number(sub.tariff)
+            : null,
+        currentKwhReading:
+          sub.currentKwhReading !== null && sub.currentKwhReading !== undefined
+            ? Number(sub.currentKwhReading)
+            : null,
+        currentKwhConsumption:
+          sub.currentKwhConsumption !== null &&
+          sub.currentKwhConsumption !== undefined
+            ? Number(sub.currentKwhConsumption)
+            : null,
+        previousKwhReading:
+          sub.previousKwhReading !== null &&
+          sub.previousKwhReading !== undefined
+            ? Number(sub.previousKwhReading)
+            : null,
+        previousKwhConsumption:
+          sub.previousKwhConsumption !== null &&
+          sub.previousKwhConsumption !== undefined
+            ? Number(sub.previousKwhConsumption)
+            : null,
+        lastBillKwhConsumption:
+          sub.lastBillKwhConsumption !== null &&
+          sub.lastBillKwhConsumption !== undefined
+            ? Number(sub.lastBillKwhConsumption)
+            : null,
+      };
+    });
   }
 
   async updateStatus(

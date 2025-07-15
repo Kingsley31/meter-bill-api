@@ -108,6 +108,22 @@ export class MeterController {
     return this.meterService.getMeterById({ meterId: id });
   }
 
+  @Get(':id/sub-meters')
+  @ApiOperation({
+    summary: 'List a derived meter sub meters',
+    description: 'Returns a list of sub meters for a derived meter.',
+  })
+  @ApiOkResponse({
+    description:
+      'The derived meter sub meters have been successfully retrieved.',
+    type: Array<MeterResponseDto>,
+  })
+  async listMeterSubMeters(
+    @Param('id') id: string,
+  ): Promise<MeterResponseDto[]> {
+    return this.meterService.listMeterSubMeters(id);
+  }
+
   @Patch(':id/status')
   @ApiOperation({
     summary: 'Change meter status',

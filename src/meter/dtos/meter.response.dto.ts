@@ -155,6 +155,14 @@ export class MeterResponseDto {
   currentKwhReading: number | null;
 
   @ApiPropertyOptional({
+    description: 'Current kWh consmption of the meter',
+    type: Number,
+    example: 12345.67,
+    nullable: true,
+  })
+  currentKwhConsumption: number | null;
+
+  @ApiPropertyOptional({
     description: 'Current kWh reading date of the meter',
     type: String,
     format: 'date-time',
@@ -162,6 +170,31 @@ export class MeterResponseDto {
     nullable: true,
   })
   currentKwhReadingDate?: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Previous kWh reading of the meter',
+    type: Number,
+    example: 12345.67,
+    nullable: true,
+  })
+  previousKwhReading: number | null;
+
+  @ApiPropertyOptional({
+    description: 'Previous kWh consmption of the meter',
+    type: Number,
+    example: 12345.67,
+    nullable: true,
+  })
+  previousKwhConsumption: number | null;
+
+  @ApiPropertyOptional({
+    description: 'Previous kWh reading date of the meter',
+    type: String,
+    format: 'date-time',
+    example: '2024-06-28T15:00:00.000Z',
+    nullable: true,
+  })
+  previousKwhReadingDate?: Date | null;
 
   @ApiPropertyOptional({
     description: 'Last billed kWh consumption',
