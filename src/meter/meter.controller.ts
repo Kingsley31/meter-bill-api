@@ -30,6 +30,8 @@ import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
 import { CreateMeterReadingDto } from './dtos/create-meter-reading.dto';
 import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
 import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
+import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
+import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -116,12 +118,31 @@ export class MeterController {
   @ApiOkResponse({
     description:
       'The derived meter sub meters have been successfully retrieved.',
-    type: Array<MeterResponseDto>,
+    type: MeterResponseDto,
+    isArray: true,
   })
   async listMeterSubMeters(
     @Param('id') id: string,
   ): Promise<MeterResponseDto[]> {
     return this.meterService.listMeterSubMeters(id);
+  }
+
+  @Get(':id/consumption-chart')
+  @ApiOperation({
+    summary: 'List consumption chart data for a meter',
+    description: 'Returns a list of consumption chart data for a meter.',
+  })
+  @ApiOkResponse({
+    description:
+      'The meter consumption chart data have been successfully retrieved.',
+    type: MeterConsumptionChartDataResponse,
+    isArray: true,
+  })
+  async listMeterConsumptionChartData(
+    @Param('id') id: string,
+    @Query() filter: MeterConsumpptionChartQuerDto,
+  ): Promise<MeterConsumptionChartDataResponse[]> {
+    return this.meterService.listMeterConsumptionChartData(id, filter);
   }
 
   @Patch(':id/status')

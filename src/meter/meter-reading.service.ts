@@ -126,4 +126,24 @@ export class MeterReadingService {
 
     return result;
   }
+
+  async getConsumptionForMeterByRange(params: {
+    meterId: string;
+    startDate: Date;
+    endDate: Date;
+  }): Promise<number> {
+    const result = await this.db
+      .select({
+        totalConsumption: sql<string>`SUM(${meterReadings.kwhConsumption})`,
+      })
+      .from(meterReadings)
+      .where(
+        and(
+          eq(meterReadings.meterId, params.meterId),
+          between(meterReadings.readingDate, params.startDate, params.endDate),
+        ),
+      );
+
+    return Number(result.length > 0 ? result[0].totalConsumption : 0);
+  }
 }

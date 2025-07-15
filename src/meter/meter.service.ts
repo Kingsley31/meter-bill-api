@@ -35,6 +35,8 @@ import {
   SubmeterWithConsumption,
 } from './types';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
+import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
 
 @Injectable()
 export class MeterService {
@@ -730,5 +732,54 @@ export class MeterService {
         };
       }),
     };
+  }
+
+  getPastMonths(count: number) {
+    const results: { month: string; startDate: Date; endDate: Date }[] = [];
+
+    const now = new Date();
+
+    for (let i = 0; i < count; i++) {
+      // Create a date pointing to the 1st of the target month
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+
+      const year = date.getFullYear();
+      const month = date.getMonth(); // 0-based (0=Jan)
+
+      // Start of month
+      const startDate = new Date(year, month, 1, 0, 0, 0);
+
+      // End of month → move to next month, subtract 1 second
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+      // Month label: "MonthName-Year"
+      const monthName = date.toLocaleString('default', { month: 'long' }); // e.g. "July"
+      const label = `${monthName} ${year}`;
+
+      results.push({ month: label, startDate, endDate });
+    }
+
+    return results;
+  }
+
+  async listMeterConsumptionChartData(
+    id: string,
+    filter: MeterConsumpptionChartQuerDto,
+  ): Promise<MeterConsumptionChartDataResponse[]> {
+    const months = this.getPastMonths(filter.numberOfPastMonths);
+    const consumptionChartPromise = months.map(async (monthData) => {
+      const consumption: number =
+        await this.meterReadingService.getConsumptionForMeterByRange({
+          meterId: id,
+          startDate: monthData.startDate,
+          endDate: monthData.endDate,
+        });
+      return {
+        consumption,
+        month: monthData.month,
+      };
+    });
+    const consumptionChart = Promise.all(consumptionChartPromise);
+    return consumptionChart;
   }
 }
