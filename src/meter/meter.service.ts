@@ -318,7 +318,13 @@ export class MeterService {
     const [{ count: totalUnreadMeters }] = await this.db
       .select({ count: count() })
       .from(meters)
-      .where(isNull(meters.currentKwhReadingDate));
+      .where(
+        and(
+          isNull(meters.currentKwhReadingDate),
+          eq(meters.type, MeterType.MEASUREMENT),
+          eq(meters.isActive, true),
+        ),
+      );
 
     // Total energy consumed
     const [{ sum: totalEnergyConsumed }] = await this.db
@@ -332,7 +338,7 @@ export class MeterService {
 
     // Average energy consumption
     const [{ avg: averageEnergyConsumption }] = await this.db
-      .select({ avg: avg(meters.currentKwhReading) })
+      .select({ avg: avg(meters.currentKwhConsumption) })
       .from(meters);
 
     // Average energy production
