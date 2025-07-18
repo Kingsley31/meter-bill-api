@@ -224,6 +224,12 @@ export class MeterService {
       ),
     );
 
+    // Filter out derived meters
+    where.push(eq(meters.type, MeterType.MEASUREMENT));
+
+    // Filter out inactive meters
+    where.push(eq(meters.isActive, true));
+
     const offset = (page - 1) * pageSize;
 
     // Get total count
