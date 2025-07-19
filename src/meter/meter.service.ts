@@ -614,6 +614,7 @@ export class MeterService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async calculateDerivedMetersConsumption() {
+    console.log('Calculating Derived Meters Consumptions....');
     const windowHours = 24;
     const now = Date.now();
     const pastWindowHour = new Date(now - windowHours * 60 * 60 * 1000);
@@ -631,6 +632,10 @@ export class MeterService {
       ),
       with: { subMeters: true },
     });
+    // console.log(
+    //   'Derived Meters Numbers:',
+    //   derivedMeters.map((dm) => dm.meterNumber),
+    // );
     const calculationPromise = derivedMeters.map(async (derivedMeter) => {
       const calculationMeterIds = derivedMeter.subMeters.map(
         (sub) => sub.subMeterId,
@@ -693,6 +698,7 @@ export class MeterService {
         .where(eq(meters.id, derivedMeter.id));
     });
     await Promise.all(calculationPromise);
+    console.log('Derived Meters Consumptions Calculation Done!');
   }
 
   calculateDerivedMeterConsumption(

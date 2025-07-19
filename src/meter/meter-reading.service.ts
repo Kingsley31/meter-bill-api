@@ -92,7 +92,10 @@ export class MeterReadingService {
       meterReadingRows.map(async (reading) => {
         return {
           ...reading,
-          meterImage: await this.fileService.getSignedUrl(reading.meterImage),
+          meterImage:
+            reading.meterImage.trim() != 'N/A'
+              ? await this.fileService.getSignedUrl(reading.meterImage)
+              : '',
         };
       }),
     );
