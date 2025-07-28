@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsDate, IsNumber, Min } from 'class-validator';
 
 export class SetMeterTariffDto {
   @ApiProperty({
@@ -10,4 +11,13 @@ export class SetMeterTariffDto {
   @Min(0.01)
   @IsNumber()
   tariff: number;
+
+  @ApiProperty({
+    description: 'The effective date from which the tariff applies',
+    example: '2023-10-01T00:00:00Z',
+    type: Date,
+  })
+  @Type(() => Date)
+  @IsDate()
+  effectiveFrom: Date;
 }

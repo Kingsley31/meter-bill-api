@@ -1,1 +1,0 @@
-ALTER TABLE "meters" ADD COLUMN "location" varchar DEFAULT 'none' NOT NULL;

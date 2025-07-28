@@ -37,12 +37,14 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
+import { MeterTariffService } from './meter-tariff.service';
 
 @Injectable()
 export class MeterService {
   constructor(
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly meterReadingService: MeterReadingService,
+    private readonly meterTariffService: MeterTariffService,
   ) {}
 
   async createMeter(createMeterDto: CreateMeterDto): Promise<MeterResponseDto> {
@@ -531,12 +533,30 @@ export class MeterService {
   async setTariff(id: string, setMeterTariffDto: SetMeterTariffDto) {
     const meter = await this.db.query.meters.findFirst({
       where: eq(meters.id, id),
-      with: {
-        subMeters: true,
-      },
     });
     if (!meter) {
       throw new BadRequestException('Meter not found');
+    }
+    if (Number(meter.tariff ?? 0) === setMeterTariffDto.tariff) {
+      throw new BadRequestException(
+        'Meter already has this tariff set, no need to update.',
+      );
+    }
+    const currentDate = new Date();
+    if (setMeterTariffDto.effectiveFrom < currentDate) {
+      throw new BadRequestException('Effective date must be in the future.');
+    }
+    const lastSetTariff = await this.meterTariffService.getLastTariffForMeter({
+      meterId: meter.id,
+      tariff: meter.tariff,
+    });
+    if (
+      lastSetTariff &&
+      lastSetTariff.effectiveFrom > setMeterTariffDto.effectiveFrom
+    ) {
+      throw new BadRequestException(
+        'Cannot set a tariff with an effective date earlier than the last set tariff.',
+      );
     }
     await this.db
       .update(meters)
@@ -544,6 +564,12 @@ export class MeterService {
         tariff: setMeterTariffDto.tariff.toString(),
       })
       .where(eq(meters.id, id));
+    await this.meterTariffService.createTariff({
+      meterId: meter.id,
+      meterNumber: meter.meterNumber,
+      tariff: setMeterTariffDto.tariff,
+      effectiveFrom: setMeterTariffDto.effectiveFrom,
+    });
     return true;
   }
 

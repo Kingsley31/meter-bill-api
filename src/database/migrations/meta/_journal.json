@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1750776805559,
-      "tag": "0000_glorious_clint_barton",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1751042451540,
-      "tag": "0001_magical_archangel",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1751319418398,
-      "tag": "0002_material_the_professor",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1751321218812,
-      "tag": "0003_silky_morbius",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1751566976487,
-      "tag": "0004_reflective_firebird",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1751709163115,
-      "tag": "0005_lumpy_maggott",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1752430764304,
-      "tag": "0006_busy_crusher_hogan",
+      "when": 1753735197679,
+      "tag": "0000_wild_scarlet_witch",
       "breakpoints": true
     }
   ]

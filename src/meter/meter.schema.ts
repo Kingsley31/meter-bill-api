@@ -110,3 +110,23 @@ export const meterReadingRelations = relations(meterReadings, ({ one }) => ({
     references: [meters.id],
   }),
 }));
+
+// Define Meter Tariffs Table
+export const meterTariffs = pgTable('meter_tariffs', {
+  id: uuid('id')
+    .default(sql`gen_random_uuid()`)
+    .primaryKey(),
+  meterNumber: varchar('meter_number').unique().notNull(),
+  meterId: uuid('meter_id')
+    .notNull()
+    .references(() => meters.id),
+  tariff: numeric('tariff'),
+  effectiveFrom: timestamp('effective_from').notNull(),
+  createdAt: timestamp('created_at')
+    .default(sql`now()`)
+    .notNull(),
+  updatedAt: timestamp('updated_at')
+    .default(sql`now()`)
+    .notNull(),
+  deletedAt: timestamp('deleted_at'),
+});

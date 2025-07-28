@@ -1,2 +1,0 @@
-ALTER TABLE "meter_sub_meters" ADD CONSTRAINT "meter_sub_meters_meter_id_meters_id_fk" FOREIGN KEY ("meter_id") REFERENCES "public"."meters"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "meter_sub_meters" ADD CONSTRAINT "meter_sub_meters_sub_meter_id_meters_id_fk" FOREIGN KEY ("sub_meter_id") REFERENCES "public"."meters"("id") ON DELETE no action ON UPDATE no action;

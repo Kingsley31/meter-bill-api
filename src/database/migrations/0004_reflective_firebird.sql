@@ -1,1 +1,0 @@
-ALTER TABLE "meters" ADD COLUMN "current_kwh_reading_date" timestamp;
