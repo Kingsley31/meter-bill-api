@@ -29,8 +29,7 @@ CREATE TABLE "meter_tariffs" (
 	"effective_from" timestamp NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"deleted_at" timestamp,
-	CONSTRAINT "meter_tariffs_meter_number_unique" UNIQUE("meter_number")
+	"deleted_at" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE "meters" (

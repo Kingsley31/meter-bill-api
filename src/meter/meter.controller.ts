@@ -32,6 +32,8 @@ import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
 import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
+import { MeterTariffResponseDto } from './dtos/meter-tariff.response.dto';
+import { ListMeterTariffsQueryDto } from './dtos/list-meter-tariffs.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -268,5 +270,19 @@ export class MeterController {
     @Query() filter: ListMeterReadingQueryDto,
   ): Promise<PaginatedResponseDto<MeterReadingResponseDto>> {
     return this.meterService.listMeterReadings(id, filter);
+  }
+
+  @Get(':id/tariffs')
+  @ApiOperation({
+    summary: 'List the tariffs of a meter',
+    description:
+      'Returns a paginated list of a meter tariffs based on the provided filters.',
+  })
+  @ApiPaginatedResponse({ model: MeterTariffResponseDto })
+  async listMeterTariffs(
+    @Param('id') id: string,
+    @Query() filter: ListMeterTariffsQueryDto,
+  ): Promise<PaginatedResponseDto<MeterTariffResponseDto>> {
+    return this.meterService.listMeterTariff(id, filter);
   }
 }

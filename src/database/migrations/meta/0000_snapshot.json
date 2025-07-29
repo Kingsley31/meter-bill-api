@@ -1,5 +1,5 @@
 {
-  "id": "f33a362f-0da9-419c-b190-52e05365917d",
+  "id": "6bc0406c-55b0-4507-81ef-9b71c276df5c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -252,15 +252,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "meter_tariffs_meter_number_unique": {
-          "name": "meter_tariffs_meter_number_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "meter_number"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

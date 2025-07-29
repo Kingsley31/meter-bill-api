@@ -573,6 +573,23 @@ export class MeterService {
     return true;
   }
 
+  async listMeterTariff(
+    meterId: string,
+    filter: {
+      tariff?: number;
+      effectiveFromStart?: Date;
+      effectiveFromEnd?: Date;
+      page: number;
+      pageSize: number;
+    },
+  ) {
+    const paginatedTariffs = await this.meterTariffService.getTariffsByMeterId(
+      meterId,
+      filter,
+    );
+    return paginatedTariffs;
+  }
+
   async createReading(
     id: string,
     createMeterReadingDto: CreateMeterReadingDto,

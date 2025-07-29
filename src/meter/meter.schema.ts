@@ -116,7 +116,7 @@ export const meterTariffs = pgTable('meter_tariffs', {
   id: uuid('id')
     .default(sql`gen_random_uuid()`)
     .primaryKey(),
-  meterNumber: varchar('meter_number').unique().notNull(),
+  meterNumber: varchar('meter_number').notNull(),
   meterId: uuid('meter_id')
     .notNull()
     .references(() => meters.id),
