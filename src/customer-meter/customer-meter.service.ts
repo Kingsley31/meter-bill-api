@@ -27,6 +27,17 @@ export class CustomerMeterSevice {
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
+    const customerMeter = await this.db.query.customerMeters.findFirst({
+      where: and(
+        eq(customerMeters.meterId, params.meterId),
+        eq(customerMeters.customerId, params.customerId),
+      ),
+    });
+    if (customerMeter) {
+      throw new BadRequestException(
+        'Meter is already assigned to this customer',
+      );
+    }
     await this.db.insert(customerMeters).values(params).returning();
     const [{ count: totalCount }] = await this.db
       .select({ count: count() })
