@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -255,6 +256,34 @@ export class MeterController {
     @Body() createMeterReadingDto: CreateMeterReadingDto,
   ) {
     return this.meterService.createReading(id, createMeterReadingDto);
+  }
+
+  @Delete(':id/readings/:readingId')
+  @ApiOperation({
+    summary: 'Delete a meter reading',
+    description: 'Delete reading of a meter that was entered today.',
+  })
+  @ApiOkResponse({
+    description: 'The meter reading has been successfully deleted.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter reading',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  deleteReading(
+    @Param('id') meterId: string,
+    @Param('readingId') readingId: string,
+  ) {
+    return this.meterService.deleteMeterReading(meterId, readingId);
   }
 
   @Get(':id/readings')

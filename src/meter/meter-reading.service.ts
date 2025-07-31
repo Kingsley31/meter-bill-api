@@ -149,4 +149,28 @@ export class MeterReadingService {
 
     return Number(result.length > 0 ? result[0].totalConsumption : 0);
   }
+
+  async getReadingById(readingId: string) {
+    const reading = await this.db.query.meterReadings.findFirst({
+      where: eq(meterReadings.id, readingId),
+    });
+    return reading;
+  }
+
+  async deleteReadingById(readingId: string): Promise<boolean> {
+    const result = await this.db
+      .delete(meterReadings)
+      .where(eq(meterReadings.id, readingId))
+      .returning();
+    await this.fileService.deleteFile(result[0].meterImage);
+    return result.length > 0;
+  }
+
+  async getMeterCurrentReading(meterId: string) {
+    const meterCurrentReading = await this.db.query.meterReadings.findFirst({
+      where: eq(meterReadings.meterId, meterId),
+      orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
+    });
+    return meterCurrentReading;
+  }
 }

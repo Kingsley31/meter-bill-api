@@ -499,18 +499,41 @@ export class MeterService {
       meterId: meter.id,
       meterNumber: meter.meterNumber,
     });
-    await this.db
+    await this.updateMeterCurrentAndPreviousReadingAndConsumption(id, {
+      currentKwhReading: createMeterReadingDto.kwhReading,
+      currentKwhReadingDate: createMeterReadingDto.readingDate,
+      currentKwhConsumption: kwhConsumption,
+      previousKwhReading: currentKwhReading,
+      previousKwhConsumption: Number(meter.currentKwhConsumption),
+      previousKwhReadingDate: meter.currentKwhReadingDate,
+    });
+    return true;
+  }
+
+  async updateMeterCurrentAndPreviousReadingAndConsumption(
+    meterId: string,
+    params: {
+      currentKwhReading: number;
+      currentKwhConsumption: number;
+      currentKwhReadingDate: Date;
+      previousKwhReading: number;
+      previousKwhConsumption: number;
+      previousKwhReadingDate: Date | null;
+    },
+  ) {
+    const result = await this.db
       .update(meters)
       .set({
-        currentKwhReading: createMeterReadingDto.kwhReading.toString(),
-        currentKwhReadingDate: createMeterReadingDto.readingDate,
-        currentKwhConsumption: String(kwhConsumption),
-        previousKwhReading: String(currentKwhReading),
-        previousKwhConsumption: meter.currentKwhConsumption,
-        previousKwhReadingDate: meter.currentKwhReadingDate,
+        currentKwhReading: params.currentKwhReading.toString(),
+        currentKwhReadingDate: params.currentKwhReadingDate,
+        currentKwhConsumption: String(params.currentKwhConsumption),
+        previousKwhReading: String(params.previousKwhReading),
+        previousKwhConsumption: String(params.previousKwhConsumption),
+        previousKwhReadingDate: params.previousKwhReadingDate,
       })
-      .where(eq(meters.id, id));
-    return true;
+      .where(eq(meters.id, meterId))
+      .returning();
+    return result.length > 0;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -586,17 +609,17 @@ export class MeterService {
         meterId: derivedMeter.id,
         meterNumber: derivedMeter.meterNumber,
       });
-      await this.db
-        .update(meters)
-        .set({
-          currentKwhReading: '0',
+      await this.updateMeterCurrentAndPreviousReadingAndConsumption(
+        derivedMeter.id,
+        {
+          currentKwhReading: 0,
           currentKwhReadingDate: new Date(now),
-          currentKwhConsumption: String(kwhConsumption),
-          previousKwhReading: String(currentKwhReading),
-          previousKwhConsumption: derivedMeter.currentKwhConsumption,
+          currentKwhConsumption: kwhConsumption,
+          previousKwhReading: currentKwhReading,
+          previousKwhConsumption: Number(derivedMeter.currentKwhConsumption),
           previousKwhReadingDate: derivedMeter.currentKwhReadingDate,
-        })
-        .where(eq(meters.id, derivedMeter.id));
+        },
+      );
     });
     await Promise.all(calculationPromise);
     console.log('Derived Meters Consumptions Calculation Done!');
@@ -628,6 +651,62 @@ export class MeterService {
       }
     });
     return kwhConsumption;
+  }
+
+  async deleteMeterReading(meterId: string, readingId: string) {
+    const meter = await this.getMeterById({ meterId });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    const reading = await this.meterReadingService.getReadingById(readingId);
+    if (!reading) {
+      throw new BadRequestException('Meter reading not found');
+    }
+    const todayDate = new Date();
+    const readingEnteryDate = new Date(reading.createdAt);
+    if (todayDate.getDate() !== readingEnteryDate.getDate()) {
+      throw new BadRequestException(
+        'You can only delete readings that were entered today.',
+      );
+    }
+    if (reading.meterId !== meterId) {
+      throw new BadRequestException(
+        'This reading does not belong to the specified meter.',
+      );
+    }
+    await this.meterReadingService.deleteReadingById(readingId);
+    const meterLastTwoReadings =
+      await this.meterReadingService.getReadingsByMeterId(meterId, {
+        page: 1,
+        pageSize: 2,
+      });
+    const currentReading =
+      meterLastTwoReadings.data.length > 0
+        ? meterLastTwoReadings.data[0]
+        : null;
+    const previousReading =
+      meterLastTwoReadings.data.length > 1
+        ? meterLastTwoReadings.data[1]
+        : null;
+    await this.updateMeterCurrentAndPreviousReadingAndConsumption(meterId, {
+      currentKwhReading: currentReading ? Number(currentReading.kwhReading) : 0,
+      currentKwhReadingDate: currentReading
+        ? currentReading.readingDate
+        : new Date(),
+      currentKwhConsumption: currentReading
+        ? Number(currentReading.kwhConsumption)
+        : 0,
+      previousKwhReading: previousReading
+        ? Number(previousReading.kwhReading)
+        : 0,
+      previousKwhConsumption: previousReading
+        ? Number(previousReading.kwhConsumption)
+        : 0,
+      previousKwhReadingDate: previousReading
+        ? previousReading.readingDate
+        : new Date(),
+    });
+    return true;
   }
 
   async listMeterReadings(
