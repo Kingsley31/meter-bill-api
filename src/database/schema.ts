@@ -10,6 +10,13 @@ import {
 
 export * from 'src/meter/meter.schema';
 
+import {
+  customerMeters,
+  customerMeterRelations,
+} from 'src/customer-meter/customer-meter.schema';
+
+export * from 'src/customer-meter/customer-meter.schema';
+
 const schema = {
   meters,
   meterSubmeters,
@@ -18,6 +25,8 @@ const schema = {
   meterReadings,
   meterReadingRelations,
   meterTariffs,
+  customerMeters,
+  customerMeterRelations,
 };
 
 export default schema;

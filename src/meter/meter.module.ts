@@ -9,5 +9,6 @@ import { MeterTariffService } from './meter-tariff.service';
   imports: [FileModule],
   controllers: [MeterController],
   providers: [MeterReadingService, MeterService, MeterTariffService],
+  exports: [MeterService],
 })
 export class MeterModule {}

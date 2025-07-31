@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID } from 'class-validator';
+import { IsNumber, IsString, IsUUID } from 'class-validator';
 
 export class UpdateMeterCustomerDto {
   @ApiProperty({
@@ -17,4 +17,12 @@ export class UpdateMeterCustomerDto {
   })
   @IsString()
   customerName: string;
+
+  @ApiProperty({
+    type: Number,
+    description: 'The total number of customers associated with the meter',
+    example: 100,
+  })
+  @IsNumber()
+  totalCustomers: number;
 }

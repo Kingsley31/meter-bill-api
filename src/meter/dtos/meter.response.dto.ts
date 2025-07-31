@@ -138,6 +138,13 @@ export class MeterResponseDto {
   })
   customerName: string | null;
 
+  @ApiProperty({
+    description: 'Total number of customers associated with the meter',
+    type: Number,
+    example: 100,
+  })
+  totalCustomers: number;
+
   @ApiPropertyOptional({
     description: 'Tariff assigned to the meter',
     type: Number,

@@ -20,6 +20,7 @@ export const meters = pgTable('meters', {
   location: varchar('location').notNull().default('none'), // location of the meter, e.g., building name, street
   customerId: uuid('customer_id'),
   customerName: varchar('customer_name'),
+  totalCustomers: numeric('total_customers').default('0').notNull(),
   ctRating: numeric('ct_rating').notNull(),
   ctMultiplierFactor: numeric('ct_multiplier_factor').notNull(), //used for calculating consumtion
   purpose: varchar('purpose').notNull(), // consumer, audit, bulk

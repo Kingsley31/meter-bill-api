@@ -20,7 +20,7 @@ import {
   inArray,
 } from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
-import { MeterType, MeterPurpose, Operaor } from './enums';
+import { MeterType, Operaor } from './enums';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
@@ -32,12 +32,14 @@ import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
 import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
 import {
   ReferenceMeterWithConsumption,
+  SubMeter,
   SubmeterWithConsumption,
 } from './types';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
 import { MeterTariffService } from './meter-tariff.service';
+import { mapMeterToResponseDto } from './utils';
 
 @Injectable()
 export class MeterService {
@@ -79,7 +81,7 @@ export class MeterService {
     const [meter] = await this.db.insert(meters).values(data).returning();
 
     // Insert sub meters if provided
-    let subMeters: Array<any> | null = null;
+    let subMeters: Array<SubMeter> = [];
     if (createMeterDto.subMeters && createMeterDto.subMeters.length > 0) {
       subMeters = await Promise.all(
         createMeterDto.subMeters.map(async (sub) => {
@@ -97,15 +99,7 @@ export class MeterService {
     }
 
     // Build and return the MeterResponseDto
-    return {
-      ...meter,
-      ctRating: meter.ctRating !== null ? Number(meter.ctRating) : null,
-      ctMultiplierFactor:
-        meter.ctMultiplierFactor !== null
-          ? Number(meter.ctMultiplierFactor)
-          : null,
-      subMeters: subMeters,
-    } as MeterResponseDto;
+    return mapMeterToResponseDto({ ...meter, subMeters });
   }
 
   async listMeters(
@@ -148,31 +142,7 @@ export class MeterService {
     });
 
     return {
-      data: meterRows.map((meter) => ({
-        ...meter,
-        ctRating: meter.ctRating !== null ? Number(meter.ctRating) : 0,
-        ctMultiplierFactor:
-          meter.ctMultiplierFactor !== null
-            ? Number(meter.ctMultiplierFactor)
-            : 0,
-        maxKwhReading:
-          meter.maxKwhReading !== null ? Number(meter.maxKwhReading) : 0,
-        currentKwhReading:
-          meter.currentKwhReading !== null &&
-          meter.currentKwhReading !== undefined
-            ? Number(meter.currentKwhReading)
-            : null,
-        tariff:
-          meter.tariff !== null && meter.tariff !== undefined
-            ? Number(meter.tariff)
-            : null,
-        subMeters: (meter.subMeters ?? []).map((subMeter) => ({
-          ...subMeter,
-          operator: subMeter.operator as Operaor,
-        })),
-        purpose: meter.purpose as MeterPurpose,
-        type: meter.type as MeterType,
-      })),
+      data: meterRows.map(mapMeterToResponseDto),
       total: totalCount,
       page: page,
       pageSize: pageSize,
@@ -252,51 +222,7 @@ export class MeterService {
     });
 
     return {
-      data: meterRows.map((meter) => ({
-        ...meter,
-        ctRating: meter.ctRating !== null ? Number(meter.ctRating) : 0,
-        ctMultiplierFactor:
-          meter.ctMultiplierFactor !== null
-            ? Number(meter.ctMultiplierFactor)
-            : 0,
-        maxKwhReading:
-          meter.maxKwhReading !== null ? Number(meter.maxKwhReading) : 0,
-        subMeters: (meter.subMeters ?? []).map((subMeter) => ({
-          ...subMeter,
-          operator: subMeter.operator as Operaor,
-        })),
-        purpose: meter.purpose as MeterPurpose,
-        type: meter.type as MeterType,
-        tariff:
-          meter.tariff !== null && meter.tariff !== undefined
-            ? Number(meter.tariff)
-            : null,
-        currentKwhReading:
-          meter.currentKwhReading !== null &&
-          meter.currentKwhReading !== undefined
-            ? Number(meter.currentKwhReading)
-            : null,
-        currentKwhConsumption:
-          meter.currentKwhConsumption !== null &&
-          meter.currentKwhConsumption !== undefined
-            ? Number(meter.currentKwhConsumption)
-            : null,
-        previousKwhReading:
-          meter.previousKwhReading !== null &&
-          meter.previousKwhReading !== undefined
-            ? Number(meter.previousKwhReading)
-            : null,
-        previousKwhConsumption:
-          meter.previousKwhConsumption !== null &&
-          meter.previousKwhConsumption !== undefined
-            ? Number(meter.previousKwhConsumption)
-            : null,
-        lastBillKwhConsumption:
-          meter.lastBillKwhConsumption !== null &&
-          meter.lastBillKwhConsumption !== undefined
-            ? Number(meter.lastBillKwhConsumption)
-            : null,
-      })),
+      data: meterRows.map(mapMeterToResponseDto),
       total: totalCount,
       page: page,
       pageSize: pageSize,
@@ -377,36 +303,7 @@ export class MeterService {
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
-    return {
-      ...meter,
-      ctRating: meter.ctRating !== null ? Number(meter.ctRating) : 0,
-      ctMultiplierFactor:
-        meter.ctMultiplierFactor !== null
-          ? Number(meter.ctMultiplierFactor)
-          : 0,
-      maxKwhReading:
-        meter.maxKwhReading !== null ? Number(meter.maxKwhReading) : 0,
-      subMeters: (meter.subMeters ?? []).map((subMeter) => ({
-        ...subMeter,
-        operator: subMeter.operator as Operaor,
-      })),
-      purpose: meter.purpose as MeterPurpose,
-      type: meter.type as MeterType,
-      tariff:
-        meter.tariff !== null && meter.tariff !== undefined
-          ? Number(meter.tariff)
-          : null,
-      currentKwhReading:
-        meter.currentKwhReading !== null &&
-        meter.currentKwhReading !== undefined
-          ? Number(meter.currentKwhReading)
-          : null,
-      lastBillKwhConsumption:
-        meter.lastBillKwhConsumption !== null &&
-        meter.lastBillKwhConsumption !== undefined
-          ? Number(meter.lastBillKwhConsumption)
-          : null,
-    } as MeterResponseDto;
+    return mapMeterToResponseDto(meter);
   }
 
   async listMeterSubMeters(id: string): Promise<MeterResponseDto[]> {
@@ -421,47 +318,7 @@ export class MeterService {
     const subMeters = await this.db.query.meters.findMany({
       where: inArray(meters.id, subMeterIds),
     });
-    return subMeters.map((sub) => {
-      return {
-        ...sub,
-        ctRating: sub.ctRating !== null ? Number(sub.ctRating) : 0,
-        ctMultiplierFactor:
-          sub.ctMultiplierFactor !== null ? Number(sub.ctMultiplierFactor) : 0,
-        maxKwhReading:
-          sub.maxKwhReading !== null ? Number(sub.maxKwhReading) : 0,
-        subMeters: [],
-        purpose: sub.purpose as MeterPurpose,
-        type: sub.type as MeterType,
-        tariff:
-          sub.tariff !== null && sub.tariff !== undefined
-            ? Number(sub.tariff)
-            : null,
-        currentKwhReading:
-          sub.currentKwhReading !== null && sub.currentKwhReading !== undefined
-            ? Number(sub.currentKwhReading)
-            : null,
-        currentKwhConsumption:
-          sub.currentKwhConsumption !== null &&
-          sub.currentKwhConsumption !== undefined
-            ? Number(sub.currentKwhConsumption)
-            : null,
-        previousKwhReading:
-          sub.previousKwhReading !== null &&
-          sub.previousKwhReading !== undefined
-            ? Number(sub.previousKwhReading)
-            : null,
-        previousKwhConsumption:
-          sub.previousKwhConsumption !== null &&
-          sub.previousKwhConsumption !== undefined
-            ? Number(sub.previousKwhConsumption)
-            : null,
-        lastBillKwhConsumption:
-          sub.lastBillKwhConsumption !== null &&
-          sub.lastBillKwhConsumption !== undefined
-            ? Number(sub.lastBillKwhConsumption)
-            : null,
-      };
-    });
+    return subMeters.map(mapMeterToResponseDto);
   }
 
   async updateStatus(
@@ -525,6 +382,7 @@ export class MeterService {
       .set({
         customerId: updateMeterCustomerDto.customerId,
         customerName: updateMeterCustomerDto.customerName,
+        totalCustomers: updateMeterCustomerDto.totalCustomers.toString(),
       })
       .where(eq(meters.id, id));
     return true;

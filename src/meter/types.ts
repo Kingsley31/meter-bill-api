@@ -13,3 +13,9 @@ export interface ReferenceMeterWithConsumption {
   referenceMeterId: string;
   kwhConsumption: number;
 }
+
+import { meters, meterSubmeters } from './meter.schema';
+export type SubMeter = typeof meterSubmeters.$inferSelect;
+export type MeterWithSubMeters = typeof meters.$inferSelect & {
+  subMeters: SubMeter[];
+};
