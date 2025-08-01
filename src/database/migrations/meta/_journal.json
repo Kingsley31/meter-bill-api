@@ -15,6 +15,20 @@
       "when": 1753898890214,
       "tag": "0001_pretty_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1753993101787,
+      "tag": "0002_lowly_tyger_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1754057556989,
+      "tag": "0003_flaky_living_lightning",
+      "breakpoints": true
     }
   ]
 }

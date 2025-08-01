@@ -34,6 +34,8 @@ import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
 import { MeterTariffResponseDto } from './dtos/meter-tariff.response.dto';
 import { ListMeterTariffsQueryDto } from './dtos/list-meter-tariffs.dto';
+import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
+import { UpdateMeterBillDetailsDto } from './dtos/update-meter-bill-details.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -274,7 +276,7 @@ export class MeterController {
     example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
   })
   @ApiParam({
-    name: 'id',
+    name: 'readingId',
     description: 'The ID of the meter reading',
     type: String,
     example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
@@ -284,6 +286,39 @@ export class MeterController {
     @Param('readingId') readingId: string,
   ) {
     return this.meterService.deleteMeterReading(meterId, readingId);
+  }
+
+  @Patch(':id/readings/:readingId')
+  @ApiOperation({
+    summary: 'Edit a meter reading',
+    description: 'Edit reading of a meter.',
+  })
+  @ApiOkResponse({
+    description: 'The meter reading has been successfully edited.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  @ApiParam({
+    name: 'readingId',
+    description: 'The ID of the meter reading',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  editReading(
+    @Param('id') meterId: string,
+    @Param('readingId') readingId: string,
+    @Body() editMeterReadingDto: EditMeterReadingDto,
+  ) {
+    return this.meterService.editMeterReading(
+      meterId,
+      readingId,
+      editMeterReadingDto,
+    );
   }
 
   @Get(':id/readings')
@@ -312,5 +347,30 @@ export class MeterController {
     @Query() filter: ListMeterTariffsQueryDto,
   ): Promise<PaginatedResponseDto<MeterTariffResponseDto>> {
     return this.meterService.listMeterTariff(id, filter);
+  }
+
+  @Patch(':id/bill-details')
+  @ApiOperation({
+    summary: 'Update bill details of a meter',
+    description: 'Updates the bill details of a meter.',
+  })
+  @ApiOkResponse({
+    description: 'The meter bill details have been successfully updated.',
+    type: Boolean,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  updateBillDetails(
+    @Param('id') id: string,
+    @Body() updateMeterBillDetailsDto: UpdateMeterBillDetailsDto,
+  ) {
+    return this.meterService.updateMeterLastBillDetails(
+      id,
+      updateMeterBillDetailsDto,
+    );
   }
 }

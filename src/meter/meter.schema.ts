@@ -36,6 +36,8 @@ export const meters = pgTable('meters', {
   previousKwhConsumption: numeric('previous_kwh_consumption'),
   previousKwhReadingDate: timestamp('previous_kwh_reading_date'),
   lastBillKwhConsumption: numeric('last_bill_kwh_consumption'),
+  lastBillDate: timestamp('last_bill_date'),
+  lastBillAmount: numeric('last_bill_amount'),
   createdAt: timestamp('created_at')
     .default(sql`now()`)
     .notNull(),
@@ -85,6 +87,29 @@ export const meterReadings = pgTable('meter_readings', {
     .default(sql`now()`)
     .notNull(),
   deletedAt: timestamp('deleted_at'),
+});
+
+// Define Meter Reading Update Log table
+export const meterReadingUpdates = pgTable('meter_reading_updates', {
+  id: uuid('id')
+    .default(sql`gen_random_uuid()`)
+    .primaryKey(),
+  meterReadingId: uuid('meter_reading_id')
+    .notNull()
+    .references(() => meterReadings.id),
+  readingDate: timestamp('reading_date').notNull(),
+  kwhReading: numeric('kwh_reading').notNull(),
+  kwhConsumption: numeric('kwh_consumption').notNull(),
+  meterImage: varchar('meter_image').notNull(),
+  reason: varchar('reason').notNull(), // Reason for the update
+  previousKwhReading: numeric('previous_kwh_reading').notNull(),
+  previousKwhConsumption: numeric('previous_kwh_consumption').notNull(),
+  previousKwhReadingDate: timestamp('previous_kwh_reading_date'),
+  previousMeterImage: varchar('previous_meter_image').notNull(),
+  updatedBy: uuid('updated_by'), // User who made the update
+  createdAt: timestamp('created_at')
+    .default(sql`now()`)
+    .notNull(),
 });
 
 export const meterRelation = relations(meters, ({ many }) => ({

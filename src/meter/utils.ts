@@ -8,6 +8,8 @@ export function mapMeterToResponseDto(
   return {
     ...meter,
     totalCustomers: Number(meter.totalCustomers),
+    lastBillAmount:
+      meter.lastBillAmount !== null ? Number(meter.lastBillAmount) : 0,
     ctRating: meter.ctRating !== null ? Number(meter.ctRating) : 0,
     ctMultiplierFactor:
       meter.ctMultiplierFactor !== null ? Number(meter.ctMultiplierFactor) : 0,

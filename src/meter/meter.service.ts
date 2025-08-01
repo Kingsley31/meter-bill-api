@@ -40,6 +40,7 @@ import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-qu
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
 import { MeterTariffService } from './meter-tariff.service';
 import { mapMeterToResponseDto } from './utils';
+import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 
 @Injectable()
 export class MeterService {
@@ -452,23 +453,13 @@ export class MeterService {
     id: string,
     createMeterReadingDto: CreateMeterReadingDto,
   ) {
-    const meter = await this.db.query.meters.findFirst({
-      where: eq(meters.id, id),
-    });
+    const meter = await this.getMeterById({ meterId: id });
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
     const currentKwhReading = meter.currentKwhReading
       ? Number(meter.currentKwhReading)
       : 0;
-    if (
-      currentKwhReading > createMeterReadingDto.kwhReading &&
-      !meter.hasMaxKwhReading
-    ) {
-      throw new BadRequestException(
-        'Invalid kwh reading, meter does not have max kwh reading and does not reset.',
-      );
-    }
 
     //Ensure that selected date is not before the current reading date
     const currentReadingDate = meter.currentKwhReadingDate;
@@ -481,17 +472,13 @@ export class MeterService {
       );
     }
 
-    let kwhConsumption =
-      (createMeterReadingDto.kwhReading - currentKwhReading) *
-      Number(meter.ctMultiplierFactor);
-    if (currentKwhReading > createMeterReadingDto.kwhReading) {
-      kwhConsumption =
-        (createMeterReadingDto.kwhReading +
-          Number(meter.maxKwhReading) +
-          1 -
-          currentKwhReading) *
-        Number(meter.ctMultiplierFactor);
-    }
+    const kwhConsumption = this.calculateMeasurementMeterKwhConsumption({
+      currentKwhReading: createMeterReadingDto.kwhReading,
+      previousKwhReading: currentKwhReading,
+      ctMultiplierFactor: Number(meter.ctMultiplierFactor),
+      hasMaxKwhReading: meter.hasMaxKwhReading,
+      maxKwhReading: Number(meter.maxKwhReading ?? 0),
+    });
 
     await this.meterReadingService.createReading({
       ...createMeterReadingDto,
@@ -510,6 +497,40 @@ export class MeterService {
     return true;
   }
 
+  calculateMeasurementMeterKwhConsumption(params: {
+    currentKwhReading: number;
+    previousKwhReading: number;
+    ctMultiplierFactor: number;
+    hasMaxKwhReading: boolean;
+    maxKwhReading: number;
+  }): number {
+    let kwhConsumption =
+      (params.currentKwhReading - params.previousKwhReading) *
+      params.ctMultiplierFactor;
+    // If the current kwhReading is less than previous reading
+    // but meter does't have maxkwhReading, throw an error
+    // the reading is errornoues.
+    if (
+      params.previousKwhReading > params.currentKwhReading &&
+      !params.hasMaxKwhReading
+    ) {
+      throw new BadRequestException(
+        'Invalid kwh reading, meter does not have max kwh reading and does not reset.',
+      );
+    }
+    // If the current kwhReading is less than previous reading
+    // and meter has maxKwhReading, calculate consumption
+    if (params.previousKwhReading > params.currentKwhReading) {
+      kwhConsumption =
+        (params.currentKwhReading +
+          params.maxKwhReading +
+          1 -
+          params.previousKwhReading) *
+        params.ctMultiplierFactor;
+    }
+    return kwhConsumption;
+  }
+
   async updateMeterCurrentAndPreviousReadingAndConsumption(
     meterId: string,
     params: {
@@ -518,7 +539,7 @@ export class MeterService {
       currentKwhReadingDate: Date;
       previousKwhReading: number;
       previousKwhConsumption: number;
-      previousKwhReadingDate: Date | null;
+      previousKwhReadingDate: Date | null | undefined;
     },
   ) {
     const result = await this.db
@@ -534,6 +555,106 @@ export class MeterService {
       .where(eq(meters.id, meterId))
       .returning();
     return result.length > 0;
+  }
+
+  async editMeterReading(
+    meterId: string,
+    readingId: string,
+    editMeterReadingDto: EditMeterReadingDto,
+  ) {
+    const meter = await this.getMeterById({ meterId });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    const reading = await this.meterReadingService.getReadingById(readingId);
+    if (!reading) {
+      throw new BadRequestException('Meter reading not found');
+    }
+    if (meter.id !== reading.meterId) {
+      throw new BadRequestException(
+        'Meter reading does not belong to this meter.',
+      );
+    }
+    if (
+      reading.readingDate.getDate() != meter.currentKwhReadingDate?.getDate() &&
+      reading.readingDate.getDate() != meter.previousKwhReadingDate?.getDate()
+    ) {
+      throw new BadRequestException(
+        'Only last two of this meter readings can be edited.',
+      );
+    }
+    const readingPreviousReading =
+      await this.meterReadingService.getReadingPreviousReading(reading);
+    const readingConsumption = this.calculateMeasurementMeterKwhConsumption({
+      currentKwhReading: editMeterReadingDto.kwhReading,
+      previousKwhReading: readingPreviousReading
+        ? Number(readingPreviousReading.kwhReading)
+        : 0,
+      ctMultiplierFactor: Number(meter.ctMultiplierFactor),
+      hasMaxKwhReading: meter.hasMaxKwhReading,
+      maxKwhReading: Number(meter.maxKwhReading ?? 0),
+    });
+    const readingUpdatedReading = await this.meterReadingService.updateReading({
+      readingId,
+      updateData: {
+        kwhReading: editMeterReadingDto.kwhReading.toString(),
+        kwhConsumption: readingConsumption.toString(),
+        meterImage: editMeterReadingDto.meterImage,
+      },
+      reason: editMeterReadingDto.reason,
+      reading,
+    });
+    // If there is a next reading, recalculate and update its consumption
+    // becaue it is affected by the edited reading change.
+    const readingNextReading =
+      await this.meterReadingService.getReadingNextReading(reading);
+    if (readingNextReading) {
+      const nextReadingConsumption =
+        this.calculateMeasurementMeterKwhConsumption({
+          currentKwhReading: Number(readingNextReading.kwhReading),
+          previousKwhReading: editMeterReadingDto.kwhReading,
+          ctMultiplierFactor: Number(meter.ctMultiplierFactor),
+          hasMaxKwhReading: meter.hasMaxKwhReading,
+          maxKwhReading: Number(meter.maxKwhReading ?? 0),
+        });
+      await this.meterReadingService.updateReading({
+        readingId: readingNextReading.id,
+        updateData: {
+          kwhConsumption: nextReadingConsumption.toString(),
+        },
+        reason: `Consumption updated due to previous reading edit: ${readingUpdatedReading.id}`,
+        reading: readingNextReading,
+      });
+      const unaffectedReading =
+        await this.meterReadingService.getReadingNextReading(
+          readingNextReading,
+        );
+      if (!unaffectedReading) {
+        // If there is no next reading, update the meter current reading and consumption
+        await this.updateMeterCurrentAndPreviousReadingAndConsumption(meterId, {
+          currentKwhReading: Number(readingNextReading.kwhReading),
+          currentKwhReadingDate: readingNextReading.readingDate,
+          currentKwhConsumption: nextReadingConsumption,
+          previousKwhReading: Number(readingUpdatedReading.kwhReading),
+          previousKwhConsumption: Number(readingUpdatedReading.kwhConsumption),
+          previousKwhReadingDate: readingUpdatedReading.readingDate,
+        });
+      }
+    }
+    if (!readingNextReading) {
+      // If there is no next reading, update the meter current reading and consumption
+      await this.updateMeterCurrentAndPreviousReadingAndConsumption(meterId, {
+        currentKwhReading: editMeterReadingDto.kwhReading,
+        currentKwhReadingDate: readingUpdatedReading.readingDate,
+        currentKwhConsumption: readingConsumption,
+        previousKwhReading: readingPreviousReading
+          ? Number(readingPreviousReading.kwhReading)
+          : 0,
+        previousKwhConsumption: Number(meter.currentKwhConsumption),
+        previousKwhReadingDate: meter.currentKwhReadingDate,
+      });
+    }
+    return true;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -779,5 +900,29 @@ export class MeterService {
     });
     const consumptionChart = Promise.all(consumptionChartPromise);
     return consumptionChart;
+  }
+
+  updateMeterLastBillDetails(
+    id: string,
+    {
+      lastBillKwhConsumption,
+      lastBillDate,
+      lastBillAmount,
+    }: {
+      lastBillKwhConsumption: number;
+      lastBillDate: Date;
+      lastBillAmount: number;
+    },
+  ): Promise<boolean> {
+    return this.db
+      .update(meters)
+      .set({
+        lastBillKwhConsumption: String(lastBillKwhConsumption),
+        lastBillDate,
+        lastBillAmount: String(lastBillAmount),
+      })
+      .where(eq(meters.id, id))
+      .returning()
+      .then((result) => result.length > 0);
   }
 }

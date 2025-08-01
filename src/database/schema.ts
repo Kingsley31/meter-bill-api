@@ -5,6 +5,7 @@ import {
   submeterRelations,
   meterReadings,
   meterReadingRelations,
+  meterReadingUpdates,
   meterTariffs,
 } from 'src/meter/meter.schema';
 
@@ -27,6 +28,7 @@ const schema = {
   meterTariffs,
   customerMeters,
   customerMeterRelations,
+  meterReadingUpdates,
 };
 
 export default schema;

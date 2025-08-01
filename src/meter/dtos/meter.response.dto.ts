@@ -212,6 +212,23 @@ export class MeterResponseDto {
   lastBillKwhConsumption: number | null;
 
   @ApiPropertyOptional({
+    description: 'Last bill date',
+    type: String,
+    format: 'date-time',
+    example: '2024-06-28T15:00:00.000Z',
+    nullable: true,
+  })
+  lastBillDate?: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Last bill amount',
+    type: Number,
+    example: 1500.75,
+    nullable: true,
+  })
+  lastBillAmount: number;
+
+  @ApiPropertyOptional({
     description: 'Reference meter ID used for calculation (if type is DERIVED)',
     format: 'uuid',
     example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',

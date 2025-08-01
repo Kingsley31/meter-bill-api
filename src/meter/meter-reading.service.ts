@@ -3,9 +3,10 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE } from 'src/database/constants';
 import schema from 'src/database/schema';
 import { meterReadings } from './meter.schema';
-import { and, between, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, between, count, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import { FileService } from 'src/file/file.service';
 import { TotalConsumptionResult } from './types';
+import { MeterReadingUpdateService } from './meter-reading-update.service';
 
 @Injectable()
 export class MeterReadingService {
@@ -15,6 +16,7 @@ export class MeterReadingService {
   constructor(
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly fileService: FileService,
+    private readonly meterReadingUpdateService: MeterReadingUpdateService,
   ) {}
 
   // Define methods for CRUD operations on meter readings
@@ -172,5 +174,67 @@ export class MeterReadingService {
       orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
     });
     return meterCurrentReading;
+  }
+
+  async getReadingPreviousReading(reading: typeof meterReadings.$inferSelect) {
+    const previousReading = await this.db.query.meterReadings.findFirst({
+      where: and(
+        eq(meterReadings.meterId, reading.meterId),
+        lt(meterReadings.readingDate, reading.readingDate),
+      ),
+      orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
+    });
+    return previousReading;
+  }
+
+  async getReadingNextReading(reading: typeof meterReadings.$inferSelect) {
+    const nextReading = await this.db.query.meterReadings.findFirst({
+      where: and(
+        eq(meterReadings.meterId, reading.meterId),
+        gt(meterReadings.readingDate, reading.readingDate),
+      ),
+      orderBy: (meterReadings, { asc }) => [asc(meterReadings.readingDate)],
+    });
+    return nextReading;
+  }
+
+  async updateReading({
+    readingId,
+    updateData,
+    reading,
+    reason,
+    updatedBy,
+  }: {
+    readingId: string;
+    updateData: Partial<typeof meterReadings.$inferInsert>;
+    reason: string;
+    updatedBy?: string;
+    reading: typeof meterReadings.$inferSelect;
+  }) {
+    const updatedReading = await this.db
+      .update(meterReadings)
+      .set(updateData)
+      .where(eq(meterReadings.id, readingId))
+      .returning();
+
+    if (updatedReading.length > 0 && updateData.meterImage) {
+      await this.fileService.deleteFile(reading.meterImage);
+    }
+    // Create a log of the update
+    await this.meterReadingUpdateService.createUpdate({
+      meterReadingId: reading.id,
+      readingDate: updatedReading[0].readingDate,
+      kwhReading: updatedReading[0].kwhReading,
+      kwhConsumption: updatedReading[0].kwhConsumption,
+      meterImage: updatedReading[0].meterImage,
+      reason: reason,
+      previousKwhReading: reading.kwhReading,
+      previousKwhConsumption: reading.kwhConsumption,
+      previousKwhReadingDate: reading.readingDate,
+      previousMeterImage: reading.meterImage,
+      updatedBy: updatedBy,
+    });
+
+    return updatedReading[0];
   }
 }
