@@ -650,8 +650,10 @@ export class MeterService {
         previousKwhReading: readingPreviousReading
           ? Number(readingPreviousReading.kwhReading)
           : 0,
-        previousKwhConsumption: Number(meter.currentKwhConsumption),
-        previousKwhReadingDate: meter.currentKwhReadingDate,
+        previousKwhConsumption: Number(
+          readingPreviousReading?.kwhConsumption ?? 0,
+        ),
+        previousKwhReadingDate: readingPreviousReading?.readingDate ?? null,
       });
     }
     return true;

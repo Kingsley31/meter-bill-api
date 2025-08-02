@@ -3,7 +3,20 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE } from 'src/database/constants';
 import schema from 'src/database/schema';
 import { meterReadings } from './meter.schema';
-import { and, between, count, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
+import {
+  and,
+  between,
+  count,
+  eq,
+  gt,
+  gte,
+  inArray,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { FileService } from 'src/file/file.service';
 import { TotalConsumptionResult } from './types';
 import { MeterReadingUpdateService } from './meter-reading-update.service';
@@ -88,7 +101,10 @@ export class MeterReadingService {
       where: where.length ? and(...where) : undefined,
       limit: pageSize,
       offset: offset,
-      orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
+      orderBy: (meterReadings, { desc }) => [
+        desc(meterReadings.readingDate),
+        desc(meterReadings.createdAt),
+      ],
     });
     const records = await Promise.all(
       meterReadingRows.map(async (reading) => {
@@ -171,7 +187,10 @@ export class MeterReadingService {
   async getMeterCurrentReading(meterId: string) {
     const meterCurrentReading = await this.db.query.meterReadings.findFirst({
       where: eq(meterReadings.meterId, meterId),
-      orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
+      orderBy: (meterReadings, { desc }) => [
+        desc(meterReadings.readingDate),
+        desc(meterReadings.createdAt),
+      ],
     });
     return meterCurrentReading;
   }
@@ -180,7 +199,9 @@ export class MeterReadingService {
     const previousReading = await this.db.query.meterReadings.findFirst({
       where: and(
         eq(meterReadings.meterId, reading.meterId),
-        lt(meterReadings.readingDate, reading.readingDate),
+        ne(meterReadings.id, reading.id),
+        lte(meterReadings.readingDate, reading.readingDate),
+        lt(meterReadings.createdAt, reading.createdAt),
       ),
       orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
     });
@@ -191,9 +212,14 @@ export class MeterReadingService {
     const nextReading = await this.db.query.meterReadings.findFirst({
       where: and(
         eq(meterReadings.meterId, reading.meterId),
-        gt(meterReadings.readingDate, reading.readingDate),
+        ne(meterReadings.id, reading.id),
+        gte(meterReadings.readingDate, reading.readingDate),
+        gt(meterReadings.createdAt, reading.createdAt),
       ),
-      orderBy: (meterReadings, { asc }) => [asc(meterReadings.readingDate)],
+      orderBy: (meterReadings, { asc }) => [
+        asc(meterReadings.readingDate),
+        asc(meterReadings.createdAt),
+      ],
     });
     return nextReading;
   }
