@@ -37,6 +37,7 @@ import { ListMeterTariffsQueryDto } from './dtos/list-meter-tariffs.dto';
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { UpdateMeterBillDetailsDto } from './dtos/update-meter-bill-details.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
+import { ConsumptionExceptionMeterResponseDto } from './dtos/consumption-exception-meter.response.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -85,6 +86,34 @@ export class MeterController {
     @Query() filter: ListMeterQueryDto,
   ): Promise<PaginatedResponseDto<MeterResponseDto>> {
     return this.meterService.listMeters(filter);
+  }
+
+  @Get('/reading-exceptions')
+  @ApiOperation({
+    summary:
+      'List meters their current reading is less than their previous reading',
+    description:
+      'Returns a paginated list of meters their current reading is less than their previous reading based on the provided filters.',
+  })
+  @ApiPaginatedResponse({ model: MeterResponseDto })
+  async listMetersWithReadingException(
+    @Query() filter: ListMeterQueryDto,
+  ): Promise<PaginatedResponseDto<MeterResponseDto>> {
+    return this.meterService.listMetersWithReadingException(filter);
+  }
+
+  @Get('/consumption-exceptions')
+  @ApiOperation({
+    summary:
+      'List meters with over 20 percent consumption change between current and previous consumptions',
+    description:
+      'Returns a paginated list of meters with over 20 percent consumption change between current and previous consumptions based on the provided filters.',
+  })
+  @ApiPaginatedResponse({ model: ConsumptionExceptionMeterResponseDto })
+  async listMetersWithConsmptionException(
+    @Query() filter: ListMeterQueryDto,
+  ): Promise<PaginatedResponseDto<ConsumptionExceptionMeterResponseDto>> {
+    return this.meterService.listMetersWithConsmptionException(filter);
   }
 
   @Get('/unread')

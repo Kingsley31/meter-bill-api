@@ -46,7 +46,7 @@ export const meters = pgTable('meters', {
     .notNull(),
   deletedAt: timestamp('deleted_at'),
 });
-
+//Define Submeter Table
 export const meterSubmeters = pgTable('meter_sub_meters', {
   id: uuid('id')
     .default(sql`gen_random_uuid()`)

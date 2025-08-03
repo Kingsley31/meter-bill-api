@@ -16,8 +16,13 @@ import {
   isNull,
   sum,
   avg,
+  desc,
   notBetween,
   inArray,
+  lt,
+  isNotNull,
+  sql,
+  getTableColumns,
 } from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterType, Operaor } from './enums';
@@ -39,9 +44,13 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
 import { MeterTariffService } from './meter-tariff.service';
-import { mapMeterToResponseDto } from './utils';
+import {
+  mapMeterToConsumptionExceptionResponse,
+  mapMeterToResponseDto,
+} from './utils';
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
+import { ConsumptionExceptionMeterResponseDto } from './dtos/consumption-exception-meter.response.dto';
 
 @Injectable()
 export class MeterService {
@@ -169,6 +178,135 @@ export class MeterService {
       pageSize: pageSize,
       hasMore: totalCount > page * pageSize,
     } as PaginatedResponseDto<MeterResponseDto>;
+  }
+
+  async listMetersWithReadingException(
+    filter: ListMeterQueryDto,
+  ): Promise<PaginatedResponseDto<MeterResponseDto>> {
+    const { search, areaId, type, purpose, page = 1, pageSize } = filter;
+
+    const where: Array<ReturnType<typeof eq> | ReturnType<typeof or>> = [];
+
+    where.push(
+      and(
+        isNotNull(meters.currentKwhReading),
+        isNotNull(meters.previousKwhReading),
+        lt(meters.currentKwhReading, meters.previousKwhReading),
+      ),
+    );
+
+    if (search) {
+      where.push(
+        or(
+          ilike(meters.meterNumber, `%${search}%`),
+          ilike(meters.customerName, `%${search}%`),
+          ilike(meters.location, `%${search}%`),
+        ),
+      );
+    }
+    if (areaId) where.push(eq(meters.areaId, areaId));
+    if (type) where.push(eq(meters.type, type));
+    if (purpose) where.push(eq(meters.purpose, purpose));
+
+    const offset = (page - 1) * pageSize;
+
+    // Get total count
+    const [{ count: totalCount }] = await this.db
+      .select({ count: count() })
+      .from(meters)
+      .where(where.length ? and(...where) : undefined);
+
+    // Get paginated data
+    const meterRows = await this.db.query.meters.findMany({
+      where: where.length ? and(...where) : undefined,
+      limit: pageSize,
+      offset: offset,
+      orderBy: (meter, { desc }) => [desc(meter.createdAt)],
+      with: {
+        subMeters: true, // Include subMeters in the query
+      },
+    });
+
+    return {
+      data: meterRows.map(mapMeterToResponseDto),
+      total: totalCount,
+      page: page,
+      pageSize: pageSize,
+      hasMore: totalCount > page * pageSize,
+    } as PaginatedResponseDto<MeterResponseDto>;
+  }
+
+  async listMetersWithConsmptionException(
+    filter: ListMeterQueryDto,
+  ): Promise<PaginatedResponseDto<ConsumptionExceptionMeterResponseDto>> {
+    const { search, areaId, type, purpose, page = 1, pageSize } = filter;
+    const where: Array<ReturnType<typeof eq> | ReturnType<typeof or>> = [];
+    where.push(
+      and(
+        isNotNull(meters.currentKwhConsumption),
+        isNotNull(meters.previousKwhConsumption),
+        sql`ABS((${meters.currentKwhConsumption} - ${meters.previousKwhConsumption}) / NULLIF(${meters.previousKwhConsumption}, 0)) >= 0.2`,
+      ),
+    );
+
+    if (search) {
+      where.push(
+        or(
+          ilike(meters.meterNumber, `%${search}%`),
+          ilike(meters.customerName, `%${search}%`),
+          ilike(meters.location, `%${search}%`),
+        ),
+      );
+    }
+    if (areaId) where.push(eq(meters.areaId, areaId));
+    if (type) where.push(eq(meters.type, type));
+    if (purpose) where.push(eq(meters.purpose, purpose));
+
+    const offset = (page - 1) * pageSize;
+
+    // Get total count
+    const [{ count: totalCount }] = await this.db
+      .select({ count: count() })
+      .from(meters)
+      .where(where.length ? and(...where) : undefined);
+
+    // Get paginated data
+    const meterRows = await this.db
+      .select({
+        ...getTableColumns(meters),
+        subMeters: sql<SubMeter[]>`(
+      SELECT json_agg(row_to_json(ms.*))
+      FROM meter_sub_meters ms
+      WHERE ms.meter_id = ${meters.id}
+    )`,
+        consumptionChangePercent: sql<number>`
+      ROUND(
+        ABS((${meters.currentKwhConsumption} - ${meters.previousKwhConsumption}) / NULLIF(${meters.previousKwhConsumption}, 0)) * 100,
+        2
+      )`,
+      })
+      .from(meters)
+      .where(where.length ? and(...where) : undefined)
+      .limit(pageSize)
+      .offset(offset)
+      .orderBy(desc(meters.createdAt));
+    // await this.db.query.meters.findMany({
+    //   where: where.length ? and(...where) : undefined,
+    //   limit: pageSize,
+    //   offset: offset,
+    //   orderBy: (meter, { desc }) => [desc(meter.createdAt)],
+    //   with: {
+    //     subMeters: true, // Include subMeters in the query
+    //   },
+    // });
+
+    return {
+      data: meterRows.map(mapMeterToConsumptionExceptionResponse),
+      total: totalCount,
+      page: page,
+      pageSize: pageSize,
+      hasMore: totalCount > page * pageSize,
+    } as PaginatedResponseDto<ConsumptionExceptionMeterResponseDto>;
   }
 
   async listUnreadMeters(
