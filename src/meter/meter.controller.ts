@@ -36,6 +36,7 @@ import { MeterTariffResponseDto } from './dtos/meter-tariff.response.dto';
 import { ListMeterTariffsQueryDto } from './dtos/list-meter-tariffs.dto';
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { UpdateMeterBillDetailsDto } from './dtos/update-meter-bill-details.dto';
+import { EditMeterDto } from './dtos/edit-meter.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -54,6 +55,23 @@ export class MeterController {
   })
   async createMeter(@Body() createMeterDto: CreateMeterDto) {
     return this.meterService.createMeter(createMeterDto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Edit a meter',
+    description: 'Edit a meter with the provided details.',
+  })
+  @ApiBody({ type: EditMeterDto })
+  @ApiCreatedResponse({
+    description: 'The meter has been successfully updated.',
+    type: Boolean,
+  })
+  async editMeter(
+    @Param('id') meterId: string,
+    @Body() editMeterDto: EditMeterDto,
+  ) {
+    return this.meterService.editMeter(meterId, editMeterDto);
   }
 
   @Get()

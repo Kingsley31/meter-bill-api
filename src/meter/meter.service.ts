@@ -41,6 +41,7 @@ import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart
 import { MeterTariffService } from './meter-tariff.service';
 import { mapMeterToResponseDto } from './utils';
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
+import { EditMeterDto } from './dtos/edit-meter.dto';
 
 @Injectable()
 export class MeterService {
@@ -101,6 +102,25 @@ export class MeterService {
 
     // Build and return the MeterResponseDto
     return mapMeterToResponseDto({ ...meter, subMeters });
+  }
+
+  async editMeter(meterId: string, editMeterDto: EditMeterDto) {
+    const meter = await this.db.query.meters.findFirst({
+      where: eq(meters.id, meterId),
+    });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    await this.db
+      .update(meters)
+      .set({
+        ctRating: editMeterDto.ctRating.toString(),
+        ctMultiplierFactor: editMeterDto.ctMultiplierFactor.toString(),
+        hasMaxKwhReading: editMeterDto.hasMaxKwhReading,
+        maxKwhReading: editMeterDto.maxKwhReading?.toString(),
+      })
+      .where(eq(meters.id, meterId));
+    return true;
   }
 
   async listMeters(
