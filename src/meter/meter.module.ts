@@ -5,9 +5,10 @@ import { MeterReadingService } from './meter-reading.service';
 import { FileModule } from 'src/file/file.module';
 import { MeterTariffService } from './meter-tariff.service';
 import { MeterReadingUpdateService } from './meter-reading-update.service';
+import { AreaModule } from 'src/area/area.module';
 
 @Module({
-  imports: [FileModule],
+  imports: [FileModule, AreaModule],
   controllers: [MeterController],
   providers: [
     MeterReadingService,

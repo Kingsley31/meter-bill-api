@@ -6,6 +6,7 @@ import { MeterModule } from 'src/meter/meter.module';
 import { FileModule } from 'src/file/file.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CustomerMeterModule } from 'src/customer-meter/customer-meter.module';
+import { AreaModule } from 'src/area/area.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CustomerMeterModule } from 'src/customer-meter/customer-meter.module';
     MeterModule,
     FileModule,
     CustomerMeterModule,
+    AreaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

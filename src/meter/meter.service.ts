@@ -51,6 +51,7 @@ import {
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
 import { ConsumptionExceptionMeterResponseDto } from './dtos/consumption-exception-meter.response.dto';
+import { AreaService } from 'src/area/area.service';
 
 @Injectable()
 export class MeterService {
@@ -58,7 +59,18 @@ export class MeterService {
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly meterReadingService: MeterReadingService,
     private readonly meterTariffService: MeterTariffService,
+    private readonly areaaService: AreaService,
   ) {}
+
+  async updateAreaMeterCount(areaId: string) {
+    console.log('Updating Area Meter Count');
+    const [{ count: totalMeters }] = await this.db
+      .select({ count: count() })
+      .from(meters)
+      .where(eq(meters.areaId, areaId));
+    await this.areaaService.updateAreaTotalMeter(areaId, totalMeters);
+    console.log('Area Meter Count Updated Successfully.');
+  }
 
   async createMeter(createMeterDto: CreateMeterDto): Promise<MeterResponseDto> {
     const existing = await this.db.query.meters.findFirst({
@@ -90,6 +102,9 @@ export class MeterService {
     };
     // Insert the meter into the meters table
     const [meter] = await this.db.insert(meters).values(data).returning();
+    this.updateAreaMeterCount(meter.areaId).catch((error) =>
+      console.log(error),
+    );
 
     // Insert sub meters if provided
     let subMeters: Array<SubMeter> = [];
@@ -520,6 +535,9 @@ export class MeterService {
         location: updateMeterAreaDto.location,
       })
       .where(eq(meters.id, id));
+    this.updateAreaMeterCount(updateMeterAreaDto.areaId).catch((error) =>
+      console.log(error),
+    );
     return true;
   }
 
