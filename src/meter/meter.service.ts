@@ -23,6 +23,7 @@ import {
   isNotNull,
   sql,
   getTableColumns,
+  notInArray,
 } from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterType, Operaor } from './enums';
@@ -52,6 +53,7 @@ import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
 import { ConsumptionExceptionMeterResponseDto } from './dtos/consumption-exception-meter.response.dto';
 import { AreaService } from 'src/area/area.service';
+import { MeterStatsFilterDto } from './dtos/meter-stats-filter.dto';
 
 @Injectable()
 export class MeterService {
@@ -404,49 +406,123 @@ export class MeterService {
     };
   }
 
-  async getMeterStats(): Promise<MeterStatsResponseDto> {
+  async getMeterStats(
+    query: MeterStatsFilterDto,
+  ): Promise<MeterStatsResponseDto> {
+    const { areaId } = query;
     // Total meters
+    const totalMetersWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalMetersWhere.push(eq(meters.areaId, areaId));
     const [{ count: totalMeters }] = await this.db
       .select({ count: count() })
-      .from(meters);
+      .from(meters)
+      .where(totalMetersWhere.length ? and(...totalMetersWhere) : undefined);
 
     // Total active meters
+    const totalActiveMetersWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalActiveMetersWhere.push(eq(meters.areaId, areaId));
+    totalActiveMetersWhere.push(eq(meters.isActive, true));
     const [{ count: totalActiveMeters }] = await this.db
       .select({ count: count() })
       .from(meters)
-      .where(eq(meters.isActive, true));
+      .where(
+        totalActiveMetersWhere.length
+          ? and(...totalActiveMetersWhere)
+          : undefined,
+      );
 
     // Total unread meters (currentKwhReadingDate is null)
+    const totalUnreadMetersWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalUnreadMetersWhere.push(eq(meters.areaId, areaId));
+    totalUnreadMetersWhere.push(
+      and(
+        isNull(meters.currentKwhReadingDate),
+        eq(meters.type, MeterType.MEASUREMENT),
+        eq(meters.isActive, true),
+      ),
+    );
     const [{ count: totalUnreadMeters }] = await this.db
       .select({ count: count() })
       .from(meters)
       .where(
-        and(
-          isNull(meters.currentKwhReadingDate),
-          eq(meters.type, MeterType.MEASUREMENT),
-          eq(meters.isActive, true),
-        ),
+        totalUnreadMetersWhere.length
+          ? and(...totalUnreadMetersWhere)
+          : undefined,
       );
 
     // Total energy consumed
+    const totalEnergyConsumedWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalEnergyConsumedWhere.push(eq(meters.areaId, areaId));
+    const derivedMetersWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) derivedMetersWhere.push(eq(meters.areaId, areaId));
+    derivedMetersWhere.push(eq(meters.type, MeterType.DERIVED));
+    const derivedMeters = await this.db.query.meters.findMany({
+      where: derivedMetersWhere.length ? and(...derivedMetersWhere) : undefined,
+    });
+    const mainMeterIds = derivedMeters.map(
+      (dm) => dm.calculationReferenceMeterId as string,
+    );
+    totalEnergyConsumedWhere.push(notInArray(meters.id, mainMeterIds));
     const [{ sum: totalEnergyConsumed }] = await this.db
-      .select({ sum: sum(meters.currentKwhReading) })
-      .from(meters);
+      .select({ sum: sum(meters.currentKwhConsumption) })
+      .from(meters)
+      .where(
+        totalEnergyConsumedWhere.length
+          ? and(...totalEnergyConsumedWhere)
+          : undefined,
+      );
 
     // Total energy produced (if you have a field for this, adjust accordingly)
+    const totalEnergyProducedWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalEnergyProducedWhere.push(eq(meters.areaId, areaId));
     const [{ sum: totalEnergyProduced }] = await this.db
       .select({ sum: sum(meters.lastBillKwhConsumption) })
-      .from(meters);
+      .from(meters)
+      .where(
+        totalEnergyProducedWhere.length
+          ? and(...totalEnergyProducedWhere)
+          : undefined,
+      );
 
     // Average energy consumption
+    const averageEnergyConsumptionWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) averageEnergyConsumptionWhere.push(eq(meters.areaId, areaId));
     const [{ avg: averageEnergyConsumption }] = await this.db
       .select({ avg: avg(meters.currentKwhConsumption) })
-      .from(meters);
+      .from(meters)
+      .where(
+        averageEnergyConsumptionWhere.length
+          ? and(...averageEnergyConsumptionWhere)
+          : undefined,
+      );
 
     // Average energy production
+    const averageEnergyProductionWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) averageEnergyProductionWhere.push(eq(meters.areaId, areaId));
     const [{ avg: averageEnergyProduction }] = await this.db
       .select({ avg: avg(meters.lastBillKwhConsumption) })
-      .from(meters);
+      .from(meters)
+      .where(
+        averageEnergyProductionWhere.length
+          ? and(...averageEnergyProductionWhere)
+          : undefined,
+      );
 
     return {
       totalMeters: Number(totalMeters) || 0,

@@ -38,6 +38,7 @@ import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { UpdateMeterBillDetailsDto } from './dtos/update-meter-bill-details.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
 import { ConsumptionExceptionMeterResponseDto } from './dtos/consumption-exception-meter.response.dto';
+import { MeterStatsFilterDto } from './dtos/meter-stats-filter.dto';
 
 @ApiTags('meters')
 @Controller('meters')
@@ -138,8 +139,10 @@ export class MeterController {
     description: 'The meter statistics have been successfully retrieved.',
     type: MeterStatsResponseDto,
   })
-  async getMeterStats(): Promise<MeterStatsResponseDto> {
-    return this.meterService.getMeterStats();
+  async getMeterStats(
+    @Query() query: MeterStatsFilterDto,
+  ): Promise<MeterStatsResponseDto> {
+    return this.meterService.getMeterStats(query);
   }
 
   @Get(':id')
