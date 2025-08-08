@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   numeric,
   pgTable,
@@ -35,3 +35,52 @@ export const areas = pgTable('areas', {
 });
 
 export type AreaRecord = typeof areas.$inferSelect;
+
+// Define Area Tariffs Table
+export const areaTariffs = pgTable('area_tariffs', {
+  id: uuid('id')
+    .default(sql`gen_random_uuid()`)
+    .primaryKey(),
+  areaName: varchar('area_name').notNull(),
+  areaId: uuid('area_id')
+    .notNull()
+    .references(() => areas.id),
+  tariff: numeric('tariff'),
+  effectiveFrom: timestamp('effective_from').notNull(),
+  createdAt: timestamp('created_at')
+    .default(sql`now()`)
+    .notNull(),
+  updatedAt: timestamp('updated_at')
+    .default(sql`now()`)
+    .notNull(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+// Define Area Leader Table
+export const areaLeaders = pgTable('area_leaders', {
+  id: uuid('id')
+    .default(sql`gen_random_uuid()`)
+    .primaryKey(),
+  areaName: varchar('area_name').notNull(),
+  areaId: uuid('area_id')
+    .notNull()
+    .references(() => areas.id),
+  leaderId: uuid('leader_id').notNull(),
+  leaderName: varchar('leader_name').notNull(),
+  leaderPhone: varchar('leader_phone'),
+  leaderEmail: varchar('leader_email').notNull(),
+  createdAt: timestamp('created_at')
+    .default(sql`now()`)
+    .notNull(),
+  updatedAt: timestamp('updated_at')
+    .default(sql`now()`)
+    .notNull(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const areaLeaderRelations = relations(areaLeaders, ({ one }) => ({
+  area: one(areas, {
+    fields: [areaLeaders.areaId],
+    references: [areas.id],
+  }),
+}));

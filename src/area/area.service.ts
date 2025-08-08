@@ -9,11 +9,19 @@ import { areas } from './area.schema';
 import { mapAreaToAreaResponse } from './utils';
 import { ListAreaQueryDto } from './dtos/list-area.dto';
 import { PaginatedResponseDto } from '../common/dtos/paginated-response.dto';
+import { AreaTariffService } from './area-tariff.service';
+import { SetAreaTariffDto } from './dtos/set-area-tariff.dto';
+import { AssignAreaToLeaderDto } from './dtos/assign-area-to-leader.dto';
+import { AreaLeaderService } from './area-leader.service';
+import { ListAreaLeaderQueryDto } from './dtos/list-area-leader.dto';
+import { AreaLeaderResponseDto } from './dtos/area-leader.response.dto';
 
 @Injectable()
 export class AreaService {
   constructor(
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly areaTariffService: AreaTariffService,
+    private readonly areaLeaderService: AreaLeaderService,
   ) {}
 
   async createArea(body: CreateAreaDto): Promise<AreaResponseDto> {
@@ -100,5 +108,97 @@ export class AreaService {
       .where(eq(areas.id, areaId))
       .returning();
     return updatedArea[0];
+  }
+
+  async getAreaById(params: { areaId: string }): Promise<AreaResponseDto> {
+    const area = await this.db.query.areas.findFirst({
+      where: eq(areas.id, params.areaId),
+    });
+    if (!area) {
+      throw new BadRequestException('Ara not found');
+    }
+    return mapAreaToAreaResponse(area);
+  }
+
+  async listAreaTariff(
+    areaId: string,
+    filter: {
+      tariff?: number;
+      effectiveFromStart?: Date;
+      effectiveFromEnd?: Date;
+      page: number;
+      pageSize: number;
+    },
+  ) {
+    const paginatedTariffs = await this.areaTariffService.getTariffsByAreaId(
+      areaId,
+      filter,
+    );
+    return paginatedTariffs;
+  }
+
+  async setTariff(id: string, setAreaTariffDto: SetAreaTariffDto) {
+    const area = await this.db.query.areas.findFirst({
+      where: eq(areas.id, id),
+    });
+    if (!area) {
+      throw new BadRequestException('Area not found');
+    }
+    if (Number(area.currentTariff ?? 0) === setAreaTariffDto.tariff) {
+      throw new BadRequestException(
+        'Area already has this tariff set, no need to update.',
+      );
+    }
+    const currentDate = new Date();
+    if (setAreaTariffDto.effectiveFrom < currentDate) {
+      throw new BadRequestException('Effective date must be in the future.');
+    }
+    const lastSetTariff = await this.areaTariffService.getLastTariffForArea({
+      areaId: area.id,
+      tariff: area.currentTariff,
+    });
+    if (
+      lastSetTariff &&
+      lastSetTariff.effectiveFrom > setAreaTariffDto.effectiveFrom
+    ) {
+      throw new BadRequestException(
+        'Cannot set a tariff with an effective date earlier than the last set tariff.',
+      );
+    }
+    await this.db
+      .update(areas)
+      .set({
+        currentTariff: setAreaTariffDto.tariff.toString(),
+      })
+      .where(eq(areas.id, id));
+    await this.areaTariffService.createTariff({
+      areaId: area.id,
+      areaName: area.areaName,
+      tariff: setAreaTariffDto.tariff,
+      effectiveFrom: setAreaTariffDto.effectiveFrom,
+    });
+    return true;
+  }
+
+  async assignAreaToLeader(id: string, body: AssignAreaToLeaderDto) {
+    const area = await this.db.query.areas.findFirst({
+      where: eq(areas.id, id),
+    });
+    if (!area) {
+      throw new BadRequestException('Area not found');
+    }
+    await this.areaLeaderService.assignAreaToLeader({
+      ...body,
+      areaId: area.id,
+      areaName: area.areaName,
+    });
+    return true;
+  }
+
+  async listAreaLeaders(
+    id: string,
+    filter: ListAreaLeaderQueryDto,
+  ): Promise<PaginatedResponseDto<AreaLeaderResponseDto>> {
+    return this.areaLeaderService.listAreaLeaders(id, filter);
   }
 }

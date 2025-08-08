@@ -36,6 +36,20 @@
       "when": 1754419914591,
       "tag": "0004_nasty_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1754606634492,
+      "tag": "0005_amusing_iron_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1754615842875,
+      "tag": "0006_talented_hulk",
+      "breakpoints": true
     }
   ]
 }

@@ -374,6 +374,12 @@ export class MeterController {
     description:
       'Returns a paginated list of a meter readings based on the provided filters.',
   })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
   @ApiPaginatedResponse({ model: MeterReadingResponseDto })
   async listMeterReadings(
     @Param('id') id: string,
@@ -387,6 +393,12 @@ export class MeterController {
     summary: 'List the tariffs of a meter',
     description:
       'Returns a paginated list of a meter tariffs based on the provided filters.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the meter',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
   })
   @ApiPaginatedResponse({ model: MeterTariffResponseDto })
   async listMeterTariffs(

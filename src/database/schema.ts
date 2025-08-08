@@ -18,7 +18,12 @@ import {
 
 export * from 'src/customer-meter/customer-meter.schema';
 export * from 'src/area/area.schema';
-import { areas } from 'src/area/area.schema';
+import {
+  areas,
+  areaTariffs,
+  areaLeaders,
+  areaLeaderRelations,
+} from 'src/area/area.schema';
 
 const schema = {
   meters,
@@ -32,6 +37,9 @@ const schema = {
   customerMeterRelations,
   meterReadingUpdates,
   areas,
+  areaTariffs,
+  areaLeaders,
+  areaLeaderRelations,
 };
 
 export default schema;
