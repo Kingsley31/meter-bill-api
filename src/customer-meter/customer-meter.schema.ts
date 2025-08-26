@@ -20,6 +20,7 @@ export const customerMeters = pgTable('customer_meters', {
     .notNull(),
   updatedAt: timestamp('updated_at')
     .default(sql`now()`)
+    .$onUpdate(() => new Date())
     .notNull(),
   deletedAt: timestamp('deleted_at'),
 });

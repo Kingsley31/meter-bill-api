@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE } from 'src/database/constants';
 import schema from 'src/database/schema';
-import { meters } from './meter.schema';
+import { meters, meterSubmeters } from './meter.schema';
 import { CreateMeterDto } from './dtos/create-meter.dto';
 import { MeterResponseDto } from './dtos/meter.response.dto';
 import { ListMeterQueryDto } from './dtos/list-meter.dto';
@@ -31,7 +31,6 @@ import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
 import { UpdateMeterCustomerDto } from './dtos/update-meter-customer.dto';
-import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
 import { CreateMeterReadingDto } from './dtos/create-meter-reading.dto';
 import { MeterReadingService } from './meter-reading.service';
 import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
@@ -41,10 +40,9 @@ import {
   SubMeter,
   SubmeterWithConsumption,
 } from './types';
-import { Cron, CronExpression } from '@nestjs/schedule';
+// import { Cron, CronExpression } from '@nestjs/schedule';
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
-import { MeterTariffService } from './meter-tariff.service';
 import {
   mapMeterToConsumptionExceptionResponse,
   mapMeterToResponseDto,
@@ -52,27 +50,29 @@ import {
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
 import { ConsumptionExceptionMeterResponseDto } from './dtos/consumption-exception-meter.response.dto';
-import { AreaService } from 'src/area/area.service';
 import { MeterStatsFilterDto } from './dtos/meter-stats-filter.dto';
+import { EventService } from 'src/event/event.service';
+import { EventType } from 'src/event/enums';
+import { MeterCreatedEvent } from 'src/event/event-types/meter/meter-created.event';
+import { MeterUpdatedEvent } from 'src/event/event-types/meter/meter-updated.event';
+import { MeterPayload } from 'src/event/event-types/meter/meter.payload';
+import { TariffService } from 'src/tariff/tariff.service';
+import { Subscribe } from 'src/event/subscribe.decorator';
+import { MeterTariffCreatedEvent } from 'src/event/event-types/tariff/meter-tariff-created.event';
+import { MeterTariffPayload } from 'src/event/event-types/tariff/meter-tariff.payload';
+import { MeterTariffUpdatedEvent } from 'src/event/event-types/tariff/meter-tariff-updated.event';
+import { AreaTariffCreatedEvent } from 'src/event/event-types/tariff/area-tariff-created.event';
+import { AreaTariffPayload } from 'src/event/event-types/tariff/area-tariff.payload';
+import { AreaTariffUpdatedEvent } from 'src/event/event-types/tariff/area-tariff-updated.event';
 
 @Injectable()
 export class MeterService {
   constructor(
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly meterReadingService: MeterReadingService,
-    private readonly meterTariffService: MeterTariffService,
-    private readonly areaaService: AreaService,
+    private readonly eventService: EventService,
+    private readonly tariffService: TariffService,
   ) {}
-
-  async updateAreaMeterCount(areaId: string) {
-    console.log('Updating Area Meter Count');
-    const [{ count: totalMeters }] = await this.db
-      .select({ count: count() })
-      .from(meters)
-      .where(eq(meters.areaId, areaId));
-    await this.areaaService.updateAreaTotalMeter(areaId, totalMeters);
-    console.log('Area Meter Count Updated Successfully.');
-  }
 
   async createMeter(createMeterDto: CreateMeterDto): Promise<MeterResponseDto> {
     const existing = await this.db.query.meters.findFirst({
@@ -83,7 +83,6 @@ export class MeterService {
         'A meter with this meterNumber already exists.',
       );
     }
-    console.log(createMeterDto.calculationReferenceMeterId);
     const data = {
       ...createMeterDto,
       ctRating: String(createMeterDto.ctRating),
@@ -104,9 +103,6 @@ export class MeterService {
     };
     // Insert the meter into the meters table
     const [meter] = await this.db.insert(meters).values(data).returning();
-    this.updateAreaMeterCount(meter.areaId).catch((error) =>
-      console.log(error),
-    );
 
     // Insert sub meters if provided
     let subMeters: Array<SubMeter> = [];
@@ -127,7 +123,16 @@ export class MeterService {
     }
 
     // Build and return the MeterResponseDto
-    return mapMeterToResponseDto({ ...meter, subMeters });
+    const createdMeterResponse = mapMeterToResponseDto({ ...meter, subMeters });
+    // Publish Meter Createed Event
+    const meterPayload: MeterPayload = {
+      ...createdMeterResponse,
+      areaId: createdMeterResponse.areaId!,
+      areaName: createdMeterResponse.areaName!,
+    };
+    const event = new MeterCreatedEvent(EventType.METER_CREATED, meterPayload);
+    this.eventService.publish(EventType.METER_CREATED, event);
+    return createdMeterResponse;
   }
 
   async editMeter(meterId: string, editMeterDto: EditMeterDto) {
@@ -137,7 +142,7 @@ export class MeterService {
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
-    await this.db
+    const result = await this.db
       .update(meters)
       .set({
         ctRating: editMeterDto.ctRating.toString(),
@@ -145,7 +150,29 @@ export class MeterService {
         hasMaxKwhReading: editMeterDto.hasMaxKwhReading,
         maxKwhReading: editMeterDto.maxKwhReading?.toString(),
       })
-      .where(eq(meters.id, meterId));
+      .where(eq(meters.id, meterId))
+      .returning();
+    // Publish Meter Updated Event
+    const oldMeter = mapMeterToResponseDto({ ...meter, subMeters: [] });
+    const oldMeterData: MeterPayload = {
+      ...oldMeter,
+      areaId: oldMeter.areaId!,
+      areaName: oldMeter.areaName!,
+    };
+    const newMeter = mapMeterToResponseDto({
+      ...result[0],
+      subMeters: [],
+    });
+    const updatedMeter: MeterPayload = {
+      ...newMeter,
+      areaId: newMeter.areaId!,
+      areaName: newMeter.areaName!,
+    };
+    const event = new MeterUpdatedEvent(EventType.METER_UPDATED, {
+      old: oldMeterData,
+      new: updatedMeter,
+    });
+    this.eventService.publish(EventType.METER_UPDATED, event);
     return true;
   }
 
@@ -307,15 +334,6 @@ export class MeterService {
       .limit(pageSize)
       .offset(offset)
       .orderBy(desc(meters.createdAt));
-    // await this.db.query.meters.findMany({
-    //   where: where.length ? and(...where) : undefined,
-    //   limit: pageSize,
-    //   offset: offset,
-    //   orderBy: (meter, { desc }) => [desc(meter.createdAt)],
-    //   with: {
-    //     subMeters: true, // Include subMeters in the query
-    //   },
-    // });
 
     return {
       data: meterRows.map(mapMeterToConsumptionExceptionResponse),
@@ -584,12 +602,34 @@ export class MeterService {
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
-    await this.db
+    const result = await this.db
       .update(meters)
       .set({
         isActive: updateStatusDto.isActive,
       })
-      .where(eq(meters.id, id));
+      .where(eq(meters.id, id))
+      .returning();
+    // Publish Meter Updated Event
+    const oldMeter = mapMeterToResponseDto({ ...meter, subMeters: [] });
+    const oldMeterData: MeterPayload = {
+      ...oldMeter,
+      areaId: oldMeter.areaId!,
+      areaName: oldMeter.areaName!,
+    };
+    const newMeter = mapMeterToResponseDto({
+      ...result[0],
+      subMeters: [],
+    });
+    const updatedMeter: MeterPayload = {
+      ...newMeter,
+      areaId: newMeter.areaId!,
+      areaName: newMeter.areaName!,
+    };
+    const event = new MeterUpdatedEvent(EventType.METER_UPDATED, {
+      old: oldMeterData,
+      new: updatedMeter,
+    });
+    this.eventService.publish(EventType.METER_UPDATED, event);
     return true;
   }
 
@@ -603,17 +643,36 @@ export class MeterService {
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
-    await this.db
+    const result = await this.db
       .update(meters)
       .set({
         areaId: updateMeterAreaDto.areaId,
         areaName: updateMeterAreaDto.areaName,
         location: updateMeterAreaDto.location,
       })
-      .where(eq(meters.id, id));
-    this.updateAreaMeterCount(updateMeterAreaDto.areaId).catch((error) =>
-      console.log(error),
-    );
+      .where(eq(meters.id, id))
+      .returning();
+    // Publish Meter Updated Event
+    const oldMeter = mapMeterToResponseDto({ ...meter, subMeters: [] });
+    const oldMeterData: MeterPayload = {
+      ...oldMeter,
+      areaId: oldMeter.areaId!,
+      areaName: oldMeter.areaName!,
+    };
+    const newMeter = mapMeterToResponseDto({
+      ...result[0],
+      subMeters: [],
+    });
+    const updatedMeter: MeterPayload = {
+      ...newMeter,
+      areaId: newMeter.areaId!,
+      areaName: newMeter.areaName!,
+    };
+    const event = new MeterUpdatedEvent(EventType.METER_UPDATED, {
+      old: oldMeterData,
+      new: updatedMeter,
+    });
+    this.eventService.publish(EventType.METER_UPDATED, event);
     return true;
   }
 
@@ -630,75 +689,112 @@ export class MeterService {
     if (!meter) {
       throw new BadRequestException('Meter not found');
     }
-    await this.db
+    const result = await this.db
       .update(meters)
       .set({
         customerId: updateMeterCustomerDto.customerId,
         customerName: updateMeterCustomerDto.customerName,
         totalCustomers: updateMeterCustomerDto.totalCustomers.toString(),
       })
-      .where(eq(meters.id, id));
+      .where(eq(meters.id, id))
+      .returning();
+    // Publish Meter Updated Event
+    const oldMeter = mapMeterToResponseDto({ ...meter, subMeters: [] });
+    const oldMeterData: MeterPayload = {
+      ...oldMeter,
+      areaId: oldMeter.areaId!,
+      areaName: oldMeter.areaName!,
+    };
+    const newMeter = mapMeterToResponseDto({
+      ...result[0],
+      subMeters: [],
+    });
+    const updatedMeter: MeterPayload = {
+      ...newMeter,
+      areaId: newMeter.areaId!,
+      areaName: newMeter.areaName!,
+    };
+    const event = new MeterUpdatedEvent(EventType.METER_UPDATED, {
+      old: oldMeterData,
+      new: updatedMeter,
+    });
+    this.eventService.publish(EventType.METER_UPDATED, event);
     return true;
   }
 
-  async setTariff(id: string, setMeterTariffDto: SetMeterTariffDto) {
-    const meter = await this.db.query.meters.findFirst({
-      where: eq(meters.id, id),
-    });
-    if (!meter) {
-      throw new BadRequestException('Meter not found');
-    }
-    if (Number(meter.tariff ?? 0) === setMeterTariffDto.tariff) {
-      throw new BadRequestException(
-        'Meter already has this tariff set, no need to update.',
-      );
-    }
+  async updateCurrentMeterTariff(params: { meterId: string }) {
     const currentDate = new Date();
-    if (setMeterTariffDto.effectiveFrom < currentDate) {
-      throw new BadRequestException('Effective date must be in the future.');
-    }
-    const lastSetTariff = await this.meterTariffService.getLastTariffForMeter({
-      meterId: meter.id,
-      tariff: meter.tariff,
-    });
-    if (
-      lastSetTariff &&
-      lastSetTariff.effectiveFrom > setMeterTariffDto.effectiveFrom
-    ) {
-      throw new BadRequestException(
-        'Cannot set a tariff with an effective date earlier than the last set tariff.',
-      );
-    }
+    const currentMeterTariff =
+      await this.tariffService.getMeterCurrentDateTariff({
+        meterId: params.meterId,
+        date: currentDate,
+      });
+    if (!currentMeterTariff) return;
     await this.db
       .update(meters)
       .set({
-        tariff: setMeterTariffDto.tariff.toString(),
+        tariff: currentMeterTariff.tariff!.toString(),
       })
-      .where(eq(meters.id, id));
-    await this.meterTariffService.createTariff({
-      meterId: meter.id,
-      meterNumber: meter.meterNumber,
-      tariff: setMeterTariffDto.tariff,
-      effectiveFrom: setMeterTariffDto.effectiveFrom,
-    });
-    return true;
+      .where(eq(meters.id, params.meterId));
   }
 
-  async listMeterTariff(
-    meterId: string,
-    filter: {
-      tariff?: number;
-      effectiveFromStart?: Date;
-      effectiveFromEnd?: Date;
-      page: number;
-      pageSize: number;
-    },
-  ) {
-    const paginatedTariffs = await this.meterTariffService.getTariffsByMeterId(
-      meterId,
-      filter,
+  @Subscribe(EventType.METER_TARIFF_CREATED)
+  onMeterTariffCreated(event: MeterTariffCreatedEvent) {
+    this.updateCurrentMeterTariff({ meterId: event.data.meterId }).catch((e) =>
+      console.error(e),
     );
-    return paginatedTariffs;
+    this.updateMeterConsumptionTariff(event.data).catch((e) =>
+      console.error(e),
+    );
+  }
+
+  async updateMeterConsumptionTariff(data: MeterTariffPayload) {
+    const updatedReadings =
+      await this.meterReadingService.updateMeterConsumptionTariff(data);
+    console.log(`Total Consumption Tariffs Updated: ${updatedReadings.length}`);
+  }
+
+  @Subscribe(EventType.METER_TARIFF_UPDATED)
+  onMeterTariffUpdated(event: MeterTariffUpdatedEvent) {
+    this.updateCurrentMeterTariff({ meterId: event.data.new.meterId }).catch(
+      (e) => console.error(e),
+    );
+    this.updateMeterConsumptionTariff(event.data.new).catch((e) =>
+      console.error(e),
+    );
+  }
+
+  @Subscribe(EventType.AREA_TARIFF_CREATED)
+  onAreaTariffCreated(event: AreaTariffCreatedEvent) {
+    this.updateAreaConsumptionTariff(event.data).catch((e) => console.error(e));
+  }
+
+  @Subscribe(EventType.AREA_TARIFF_UPDATED)
+  onAreaTariffUpdated(event: AreaTariffUpdatedEvent) {
+    this.updateAreaConsumptionTariff(event.data.new).catch((e) =>
+      console.error(e),
+    );
+  }
+
+  async updateAreaConsumptionTariff(data: AreaTariffPayload) {
+    const BATCH_SIZE = 500;
+    let offset = 0;
+    while (true) {
+      const areaMeters = await this.db.query.meters.findMany({
+        where: eq(meters.areaId, data.areaId),
+        limit: BATCH_SIZE,
+        offset,
+      });
+      // ✅ Break condition: no more rows
+      if (areaMeters.length === 0) break;
+      const areaMeterIds = areaMeters.map((meter) => meter.id);
+      await this.meterReadingService.updateAreaMetersConsumptionTariff({
+        ...data,
+        meterIds: areaMeterIds,
+      });
+      offset += BATCH_SIZE;
+    }
+    console.log(`Total Consumption Tariffs Updated: ${offset}`);
   }
 
   async createReading(
@@ -731,12 +827,27 @@ export class MeterService {
       hasMaxKwhReading: meter.hasMaxKwhReading,
       maxKwhReading: Number(meter.maxKwhReading ?? 0),
     });
-
+    const consumptionTariff =
+      await this.tariffService.getActiveMeterTariffByConsumptionDate({
+        meterId: meter.id,
+        areaId: meter.areaId!,
+        consumptionDate: createMeterReadingDto.readingDate,
+      });
     await this.meterReadingService.createReading({
       ...createMeterReadingDto,
       kwhConsumption,
       meterId: meter.id,
       meterNumber: meter.meterNumber,
+      tariff: consumptionTariff ? consumptionTariff.tariff : null,
+      tariffId: consumptionTariff ? consumptionTariff.tariffId : null,
+      tariffType: consumptionTariff ? consumptionTariff.tariffType : null,
+      tariffEffectiveDate: consumptionTariff
+        ? consumptionTariff.effectiveFrom
+        : null,
+      tariffEndDate: consumptionTariff ? consumptionTariff.endDate : null,
+      amount: consumptionTariff
+        ? kwhConsumption * consumptionTariff.tariff
+        : null,
     });
     await this.updateMeterCurrentAndPreviousReadingAndConsumption(id, {
       currentKwhReading: createMeterReadingDto.kwhReading,
@@ -746,6 +857,10 @@ export class MeterService {
       previousKwhConsumption: Number(meter.currentKwhConsumption),
       previousKwhReadingDate: meter.currentKwhReadingDate,
     });
+    this.calculateMeterDerivedMeterConsumption({
+      meterId: meter.id,
+      readingDate: createMeterReadingDto.readingDate,
+    }).catch((e) => console.error(e));
     return true;
   }
 
@@ -846,16 +961,36 @@ export class MeterService {
       hasMaxKwhReading: meter.hasMaxKwhReading,
       maxKwhReading: Number(meter.maxKwhReading ?? 0),
     });
+    const consumptionTariff =
+      await this.tariffService.getActiveMeterTariffByConsumptionDate({
+        meterId: meter.id,
+        areaId: meter.areaId!,
+        consumptionDate: editMeterReadingDto.readingDate,
+      });
     const readingUpdatedReading = await this.meterReadingService.updateReading({
       readingId,
       updateData: {
         kwhReading: editMeterReadingDto.kwhReading.toString(),
         kwhConsumption: readingConsumption.toString(),
         meterImage: editMeterReadingDto.meterImage,
+        tariff: consumptionTariff ? String(consumptionTariff.tariff) : null,
+        tariffId: consumptionTariff ? consumptionTariff.tariffId : null,
+        tariffType: consumptionTariff ? consumptionTariff.tariffType : null,
+        tariffEffectiveDate: consumptionTariff
+          ? consumptionTariff.effectiveFrom
+          : null,
+        tariffEndDate: consumptionTariff ? consumptionTariff.endDate : null,
+        amount: consumptionTariff
+          ? String(readingConsumption * consumptionTariff.tariff)
+          : null,
       },
       reason: editMeterReadingDto.reason,
       reading,
     });
+    this.calculateMeterDerivedMeterConsumption({
+      meterId: meter.id,
+      readingDate: readingUpdatedReading.readingDate,
+    }).catch((e) => console.error(e));
     // If there is a next reading, recalculate and update its consumption
     // becaue it is affected by the edited reading change.
     const readingNextReading =
@@ -869,14 +1004,44 @@ export class MeterService {
           hasMaxKwhReading: meter.hasMaxKwhReading,
           maxKwhReading: Number(meter.maxKwhReading ?? 0),
         });
+      const nextReadingConsumptionTariff =
+        await this.tariffService.getActiveMeterTariffByConsumptionDate({
+          meterId: meter.id,
+          areaId: meter.areaId!,
+          consumptionDate: readingNextReading.readingDate,
+        });
       await this.meterReadingService.updateReading({
         readingId: readingNextReading.id,
         updateData: {
           kwhConsumption: nextReadingConsumption.toString(),
+          tariff: nextReadingConsumptionTariff
+            ? String(nextReadingConsumptionTariff.tariff)
+            : null,
+          tariffId: nextReadingConsumptionTariff
+            ? nextReadingConsumptionTariff.tariffId
+            : null,
+          tariffType: nextReadingConsumptionTariff
+            ? nextReadingConsumptionTariff.tariffType
+            : null,
+          tariffEffectiveDate: nextReadingConsumptionTariff
+            ? nextReadingConsumptionTariff.effectiveFrom
+            : null,
+          tariffEndDate: nextReadingConsumptionTariff
+            ? nextReadingConsumptionTariff.endDate
+            : null,
+          amount: nextReadingConsumptionTariff
+            ? String(
+                nextReadingConsumption * nextReadingConsumptionTariff.tariff,
+              )
+            : null,
         },
         reason: `Consumption updated due to previous reading edit: ${readingUpdatedReading.id}`,
         reading: readingNextReading,
       });
+      this.calculateMeterDerivedMeterConsumption({
+        meterId: meter.id,
+        readingDate: readingNextReading.readingDate,
+      }).catch((e) => console.error(e));
       const unaffectedReading =
         await this.meterReadingService.getReadingNextReading(
           readingNextReading,
@@ -911,23 +1076,39 @@ export class MeterService {
     return true;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async calculateDerivedMetersConsumption() {
-    console.log('Calculating Derived Meters Consumptions....');
+  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async calculateMeterDerivedMeterConsumption(params: {
+    meterId: string;
+    readingDate: Date;
+  }) {
+    console.log('Calculating Meter Derived Consumption....');
     const windowHours = 24;
-    const now = Date.now();
-    const pastWindowHour = new Date(now - windowHours * 60 * 60 * 1000);
+    const readingDate = params.readingDate;
+    const pastWindowHour = new Date(
+      readingDate.getTime() - windowHours * 60 * 60 * 1000,
+    );
+    const derivedMeterIds: string[] = [];
+    const meterAsReferenceDerivedMeters = await this.db.query.meters.findMany({
+      where: eq(meters.calculationReferenceMeterId, params.meterId),
+    });
+    if (meterAsReferenceDerivedMeters.length > 0) {
+      const ids = meterAsReferenceDerivedMeters.map((m) => m.id);
+      derivedMeterIds.push(...ids);
+    }
+    const meterAsSubDerivedMeters = await this.db.query.meterSubmeters.findMany(
+      {
+        where: eq(meterSubmeters.subMeterId, params.meterId),
+      },
+    );
+    if (meterAsSubDerivedMeters.length > 0) {
+      const ids = meterAsSubDerivedMeters.map((m) => m.id);
+      derivedMeterIds.push(...ids);
+    }
+    if (derivedMeterIds.length == 0) return;
     const derivedMeters = await this.db.query.meters.findMany({
       where: and(
         eq(meters.type, MeterType.DERIVED),
-        or(
-          isNull(meters.currentKwhReadingDate),
-          notBetween(
-            meters.currentKwhReadingDate,
-            pastWindowHour,
-            new Date(now),
-          ),
-        ),
+        inArray(meters.id, derivedMeterIds),
       ),
       with: { subMeters: true },
     });
@@ -944,7 +1125,7 @@ export class MeterService {
         await this.meterReadingService.getTotalConsumptionForMeters(
           calculationMeterIds,
           pastWindowHour,
-          new Date(now),
+          new Date(readingDate),
         );
       // Stop Calculation for this derived meter if reference meter
       // and all submeters where not read within same period
@@ -976,19 +1157,42 @@ export class MeterService {
         submeterWithConsumption,
         referenceMeterWithConsumption,
       );
+      // Delete existing derived meter reading for thesame reading window.
+      await this.meterReadingService.deleteMeterReadingByReadingDate({
+        meterId: derivedMeter.id,
+        startDate: pastWindowHour,
+        endDate: new Date(readingDate),
+      });
+      // store derived meter tariff and  alonside the reading.
+      const consumptionTariff =
+        await this.tariffService.getActiveMeterTariffByConsumptionDate({
+          meterId: derivedMeter.id,
+          areaId: derivedMeter.areaId,
+          consumptionDate: readingDate,
+        });
       await this.meterReadingService.createReading({
         meterImage: 'N/A',
         kwhReading: 0,
-        readingDate: new Date(now),
+        readingDate: new Date(readingDate),
         kwhConsumption,
         meterId: derivedMeter.id,
         meterNumber: derivedMeter.meterNumber,
+        tariff: consumptionTariff ? consumptionTariff.tariff : null,
+        tariffId: consumptionTariff ? consumptionTariff.tariffId : null,
+        tariffType: consumptionTariff ? consumptionTariff.tariffType : null,
+        tariffEffectiveDate: consumptionTariff
+          ? consumptionTariff.effectiveFrom
+          : null,
+        tariffEndDate: consumptionTariff ? consumptionTariff.endDate : null,
+        amount: consumptionTariff
+          ? kwhConsumption * consumptionTariff.tariff
+          : null,
       });
       await this.updateMeterCurrentAndPreviousReadingAndConsumption(
         derivedMeter.id,
         {
           currentKwhReading: 0,
-          currentKwhReadingDate: new Date(now),
+          currentKwhReadingDate: new Date(readingDate),
           currentKwhConsumption: kwhConsumption,
           previousKwhReading: currentKwhReading,
           previousKwhConsumption: Number(derivedMeter.currentKwhConsumption),
@@ -1028,6 +1232,96 @@ export class MeterService {
     return kwhConsumption;
   }
 
+  async deleteMeterDerivedMeterConsumptionByReadingDate(params: {
+    meterId: string;
+    readingDate: Date;
+  }) {
+    console.log('Calculating Meter Derived Consumption....');
+    const windowHours = 24;
+    const readingDate = params.readingDate;
+    const pastWindowHour = new Date(
+      readingDate.getTime() - windowHours * 60 * 60 * 1000,
+    );
+    const derivedMeterIds: string[] = [];
+    const meterAsReferenceDerivedMeters = await this.db.query.meters.findMany({
+      where: eq(meters.calculationReferenceMeterId, params.meterId),
+    });
+    if (meterAsReferenceDerivedMeters.length > 0) {
+      const ids = meterAsReferenceDerivedMeters.map((m) => m.id);
+      derivedMeterIds.push(...ids);
+    }
+    const meterAsSubDerivedMeters = await this.db.query.meterSubmeters.findMany(
+      {
+        where: eq(meterSubmeters.subMeterId, params.meterId),
+      },
+    );
+    if (meterAsSubDerivedMeters.length > 0) {
+      const ids = meterAsSubDerivedMeters.map((m) => m.id);
+      derivedMeterIds.push(...ids);
+    }
+    if (derivedMeterIds.length == 0) return;
+    const derivedMeters = await this.db.query.meters.findMany({
+      where: and(
+        eq(meters.type, MeterType.DERIVED),
+        inArray(meters.id, derivedMeterIds),
+      ),
+      with: { subMeters: true },
+    });
+    // console.log(
+    //   'Derived Meters Numbers:',
+    //   derivedMeters.map((dm) => dm.meterNumber),
+    // );
+    const deletePromise = derivedMeters.map(async (derivedMeter) => {
+      // Delete existing derived meter reading for thesame reading window.
+      const deletedReadings =
+        await this.meterReadingService.deleteMeterReadingByReadingDate({
+          meterId: derivedMeter.id,
+          startDate: pastWindowHour,
+          endDate: new Date(readingDate),
+        });
+      if (deletedReadings.length == 0) return false;
+      const meterLastTwoReadings =
+        await this.meterReadingService.getReadingsByMeterId(derivedMeter.id, {
+          page: 1,
+          pageSize: 2,
+        });
+      const currentReading =
+        meterLastTwoReadings.data.length > 0
+          ? meterLastTwoReadings.data[0]
+          : null;
+      const previousReading =
+        meterLastTwoReadings.data.length > 1
+          ? meterLastTwoReadings.data[1]
+          : null;
+      await this.updateMeterCurrentAndPreviousReadingAndConsumption(
+        derivedMeter.id,
+        {
+          currentKwhReading: currentReading
+            ? Number(currentReading.kwhReading)
+            : 0,
+          currentKwhReadingDate: currentReading
+            ? currentReading.readingDate
+            : new Date(),
+          currentKwhConsumption: currentReading
+            ? Number(currentReading.kwhConsumption)
+            : 0,
+          previousKwhReading: previousReading
+            ? Number(previousReading.kwhReading)
+            : 0,
+          previousKwhConsumption: previousReading
+            ? Number(previousReading.kwhConsumption)
+            : 0,
+          previousKwhReadingDate: previousReading
+            ? previousReading.readingDate
+            : new Date(),
+        },
+      );
+      return true;
+    });
+    await Promise.all(deletePromise);
+    console.log('Meter Derived Meters Affected Readings Deleted Sucessfully!');
+  }
+
   async deleteMeterReading(meterId: string, readingId: string) {
     const meter = await this.getMeterById({ meterId });
     if (!meter) {
@@ -1050,6 +1344,10 @@ export class MeterService {
       );
     }
     await this.meterReadingService.deleteReadingById(readingId);
+    this.deleteMeterDerivedMeterConsumptionByReadingDate({
+      meterId: reading.meterId,
+      readingDate: reading.readingDate,
+    }).catch((e) => console.error(e));
     const meterLastTwoReadings =
       await this.meterReadingService.getReadingsByMeterId(meterId, {
         page: 1,

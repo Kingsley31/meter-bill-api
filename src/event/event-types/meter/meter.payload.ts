@@ -1,0 +1,28 @@
+export type MeterPayload = {
+  id: string;
+  meterNumber: string;
+  location: string;
+  isActive: boolean;
+  areaId: string;
+  areaName: string;
+  purpose: string;
+  ctRating: number;
+  ctMultiplierFactor: number;
+  calculationReferenceMeterId?: string | null;
+  hasMaxKwhReading: boolean;
+  maxKwhReading?: number | null;
+  type: string;
+  totalCustomers: number;
+  tariff?: number | null;
+  currentKwhReading?: number | null;
+  currentKwhReadingDate?: Date | null;
+  currentKwhConsumption?: number | null;
+  previousKwhReading?: number | null;
+  previousKwhConsumption?: number | null;
+  previousKwhReadingDate?: Date | null;
+  lastBillKwhConsumption?: number | null;
+  lastBillDate?: Date | null;
+  lastBillAmount?: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+};

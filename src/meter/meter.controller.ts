@@ -26,14 +26,11 @@ import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
-import { SetMeterTariffDto } from './dtos/set-meter-tariff.dto';
 import { CreateMeterReadingDto } from './dtos/create-meter-reading.dto';
 import { MeterReadingResponseDto } from './dtos/meter-readings.response.dto';
 import { ListMeterReadingQueryDto } from './dtos/list-meter-reading-dto';
 import { MeterConsumptionChartDataResponse } from './dtos/mete-consumption-chart-data.response.dto';
 import { MeterConsumpptionChartQuerDto } from './dtos/meter-consumption-chart-query.dto';
-import { MeterTariffResponseDto } from './dtos/meter-tariff.response.dto';
-import { ListMeterTariffsQueryDto } from './dtos/list-meter-tariffs.dto';
 import { EditMeterReadingDto } from './dtos/edit-meter-reading.dto';
 import { UpdateMeterBillDetailsDto } from './dtos/update-meter-bill-details.dto';
 import { EditMeterDto } from './dtos/edit-meter.dto';
@@ -266,28 +263,6 @@ export class MeterController {
   //   return this.meterService.updateCustomer(id, updateMeterCustomerDto);
   // }
 
-  @Patch(':id/tariff')
-  @ApiOperation({
-    summary: 'Set Meter tariff',
-    description: 'Set a tariff for a single meter.',
-  })
-  @ApiOkResponse({
-    description: 'The meter tariff has been successfully set.',
-    type: Boolean,
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'The ID of the meter',
-    type: String,
-    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
-  })
-  setTariff(
-    @Param('id') id: string,
-    @Body() setMeterTariffDto: SetMeterTariffDto,
-  ) {
-    return this.meterService.setTariff(id, setMeterTariffDto);
-  }
-
   @Post(':id/readings')
   @ApiOperation({
     summary: 'Create a meter reading',
@@ -389,26 +364,6 @@ export class MeterController {
     @Query() filter: ListMeterReadingQueryDto,
   ): Promise<PaginatedResponseDto<MeterReadingResponseDto>> {
     return this.meterService.listMeterReadings(id, filter);
-  }
-
-  @Get(':id/tariffs')
-  @ApiOperation({
-    summary: 'List the tariffs of a meter',
-    description:
-      'Returns a paginated list of a meter tariffs based on the provided filters.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'The ID of the meter',
-    type: String,
-    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
-  })
-  @ApiPaginatedResponse({ model: MeterTariffResponseDto })
-  async listMeterTariffs(
-    @Param('id') id: string,
-    @Query() filter: ListMeterTariffsQueryDto,
-  ): Promise<PaginatedResponseDto<MeterTariffResponseDto>> {
-    return this.meterService.listMeterTariff(id, filter);
   }
 
   @Patch(':id/bill-details')

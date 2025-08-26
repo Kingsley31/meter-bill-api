@@ -11,6 +11,7 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
   lte,
   ne,
@@ -20,6 +21,9 @@ import {
 import { FileService } from 'src/file/file.service';
 import { TotalConsumptionResult } from './types';
 import { MeterReadingUpdateService } from './meter-reading-update.service';
+import { MeterTariffPayload } from 'src/event/event-types/tariff/meter-tariff.payload';
+import { TariffType } from 'src/tariff/enums';
+import { AreaTariffPayload } from 'src/event/event-types/tariff/area-tariff.payload';
 
 @Injectable()
 export class MeterReadingService {
@@ -40,6 +44,12 @@ export class MeterReadingService {
     kwhReading: number;
     kwhConsumption: number;
     meterImage: string;
+    tariffId?: string | null;
+    tariff?: number | null;
+    tariffType?: string | null;
+    tariffEffectiveDate?: Date | null;
+    tariffEndDate?: Date | null;
+    amount?: number | null;
   }) {
     const createdReading = await this.db
       .insert(meterReadings)
@@ -47,6 +57,8 @@ export class MeterReadingService {
         ...params,
         kwhReading: String(params.kwhReading),
         kwhConsumption: String(params.kwhConsumption),
+        tariff: params.tariff ? String(params.tariff) : null,
+        amount: params.amount ? String(params.amount) : null,
       })
       .returning();
     return createdReading;
@@ -262,5 +274,80 @@ export class MeterReadingService {
     });
 
     return updatedReading[0];
+  }
+
+  async updateMeterConsumptionTariff(data: MeterTariffPayload) {
+    const updatedReadings = await this.db
+      .update(meterReadings)
+      .set({
+        tariffId: data.id,
+        tariff: String(data.tariff),
+        tariffType: TariffType.METER_TARIFF,
+        tariffEffectiveDate: data.effectiveFrom,
+        tariffEndDate: data.endDate,
+        amount: sql`${meterReadings.kwhConsumption} * ${data.tariff}`,
+      })
+      .where(
+        and(
+          eq(meterReadings.meterId, data.meterId),
+          gte(meterReadings.readingDate, data.effectiveFrom),
+          lte(meterReadings.readingDate, data.endDate),
+        ),
+      )
+      .returning();
+    return updatedReadings;
+  }
+
+  async updateAreaMetersConsumptionTariff(
+    data: AreaTariffPayload & { meterIds: string[] },
+  ) {
+    const updatedReadings = await this.db
+      .update(meterReadings)
+      .set({
+        tariffId: data.id,
+        tariff: String(data.tariff),
+        tariffType: TariffType.AREA_TARIFF,
+        tariffEffectiveDate: data.effectiveFrom,
+        tariffEndDate: data.endDate,
+        amount: sql`${meterReadings.kwhConsumption} * ${data.tariff}`,
+      })
+      .where(
+        and(
+          inArray(meterReadings.meterId, data.meterIds),
+          or(
+            isNull(meterReadings.tariffType),
+            ne(meterReadings.tariffType, TariffType.METER_TARIFF),
+          ),
+          gte(meterReadings.readingDate, data.effectiveFrom),
+          lte(meterReadings.readingDate, data.endDate),
+        ),
+      )
+      .returning();
+    return updatedReadings;
+  }
+
+  async deleteMeterReadingByReadingDate(params: {
+    meterId: string;
+    startDate: Date;
+    endDate: Date;
+  }) {
+    const result = await this.db
+      .delete(meterReadings)
+      .where(
+        and(
+          eq(meterReadings.meterId, params.meterId),
+          between(meterReadings.readingDate, params.startDate, params.endDate),
+        ),
+      )
+      .returning();
+    const deleteImagesPromise = result.map(async (deletedReading) => {
+      if (deletedReading.meterImage != 'N/A') {
+        await this.fileService.deleteFile(deletedReading.meterImage);
+        return true;
+      }
+      return false;
+    });
+    await Promise.all(deleteImagesPromise);
+    return result;
   }
 }

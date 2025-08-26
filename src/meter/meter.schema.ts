@@ -28,7 +28,7 @@ export const meters = pgTable('meters', {
   calculationReferenceMeterId: uuid('calculation_reference_meter_id'), // used for calculated meters
   hasMaxKwhReading: boolean('has_max_kwh_reading').default(true).notNull(),
   maxKwhReading: numeric('max_kwh_reading'),
-  tariff: numeric('tariff'),
+  tariff: numeric('tariff'), // Current Meer Tariff
   currentKwhReading: numeric('current_kwh_reading'),
   currentKwhReadingDate: timestamp('current_kwh_reading_date'),
   currentKwhConsumption: numeric('current_kwh_consumption'),
@@ -43,6 +43,7 @@ export const meters = pgTable('meters', {
     .notNull(),
   updatedAt: timestamp('updated_at')
     .default(sql`now()`)
+    .$onUpdate(() => new Date())
     .notNull(),
   deletedAt: timestamp('deleted_at'),
 });
@@ -63,6 +64,7 @@ export const meterSubmeters = pgTable('meter_sub_meters', {
     .notNull(),
   updatedAt: timestamp('updated_at')
     .default(sql`now()`)
+    .$onUpdate(() => new Date())
     .notNull(),
   deletedAt: timestamp('deleted_at'),
 });
@@ -79,12 +81,19 @@ export const meterReadings = pgTable('meter_readings', {
   readingDate: timestamp('reading_date').notNull(),
   kwhReading: numeric('kwh_reading').notNull(),
   kwhConsumption: numeric('kwh_consumption').notNull(), // consumption for the period
+  tariffId: uuid('tariff_id'),
+  tariff: numeric('tariff'),
+  tariffType: varchar('tariff_type'),
+  tariffEffectiveDate: timestamp('tariff_effective_date'),
+  tariffEndDate: timestamp('tariff_end_date'),
+  amount: numeric('amount'),
   meterImage: varchar('meter_image').notNull(), // URL or path to the meter image
   createdAt: timestamp('created_at')
     .default(sql`now()`)
     .notNull(),
   updatedAt: timestamp('updated_at')
     .default(sql`now()`)
+    .$onUpdate(() => new Date())
     .notNull(),
   deletedAt: timestamp('deleted_at'),
 });
@@ -136,23 +145,3 @@ export const meterReadingRelations = relations(meterReadings, ({ one }) => ({
     references: [meters.id],
   }),
 }));
-
-// Define Meter Tariffs Table
-export const meterTariffs = pgTable('meter_tariffs', {
-  id: uuid('id')
-    .default(sql`gen_random_uuid()`)
-    .primaryKey(),
-  meterNumber: varchar('meter_number').notNull(),
-  meterId: uuid('meter_id')
-    .notNull()
-    .references(() => meters.id),
-  tariff: numeric('tariff'),
-  effectiveFrom: timestamp('effective_from').notNull(),
-  createdAt: timestamp('created_at')
-    .default(sql`now()`)
-    .notNull(),
-  updatedAt: timestamp('updated_at')
-    .default(sql`now()`)
-    .notNull(),
-  deletedAt: timestamp('deleted_at'),
-});

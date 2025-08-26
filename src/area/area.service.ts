@@ -9,19 +9,28 @@ import { areas } from './area.schema';
 import { mapAreaToAreaResponse } from './utils';
 import { ListAreaQueryDto } from './dtos/list-area.dto';
 import { PaginatedResponseDto } from '../common/dtos/paginated-response.dto';
-import { AreaTariffService } from './area-tariff.service';
-import { SetAreaTariffDto } from './dtos/set-area-tariff.dto';
 import { AssignAreaToLeaderDto } from './dtos/assign-area-to-leader.dto';
 import { AreaLeaderService } from './area-leader.service';
 import { ListAreaLeaderQueryDto } from './dtos/list-area-leader.dto';
 import { AreaLeaderResponseDto } from './dtos/area-leader.response.dto';
+import { MeterCreatedEvent } from 'src/event/event-types/meter/meter-created.event';
+import { Subscribe } from 'src/event/subscribe.decorator';
+import { EventType } from 'src/event/enums';
+import { MeterUpdatedEvent } from 'src/event/event-types/meter/meter-updated.event';
+import { EventService } from 'src/event/event.service';
+import { AreaCreatedEvent } from 'src/event/event-types/area/area-created.event';
+import { AreaUpdatedEvent } from 'src/event/event-types/area/area-updated.event';
+import { TariffService } from 'src/tariff/tariff.service';
+import { AreaTariffCreatedEvent } from 'src/event/event-types/tariff/area-tariff-created.event';
+import { AreaPayload } from 'src/event/event-types/area/area.payload';
 
 @Injectable()
 export class AreaService {
   constructor(
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
-    private readonly areaTariffService: AreaTariffService,
     private readonly areaLeaderService: AreaLeaderService,
+    private readonly eventService: EventService,
+    private readonly tariffService: TariffService,
   ) {}
 
   async createArea(body: CreateAreaDto): Promise<AreaResponseDto> {
@@ -36,7 +45,13 @@ export class AreaService {
     if (areaExists) throw new BadRequestException('This Area already exists.');
     const result = await this.db.insert(areas).values(body).returning();
     const createdArea = result[0];
-    return mapAreaToAreaResponse(createdArea);
+    const mapedCreadedArea: AreaPayload = mapAreaToAreaResponse(createdArea);
+    const event = new AreaCreatedEvent(
+      EventType.AREA_CREATED,
+      mapedCreadedArea,
+    );
+    this.eventService.publish(EventType.AREA_CREATED, event);
+    return mapedCreadedArea;
   }
 
   async listAreas(
@@ -101,13 +116,65 @@ export class AreaService {
     };
   }
 
-  async updateAreaTotalMeter(areaId: string, totalMeters: number) {
+  async incrementAreaTotalMeter(areaId: string) {
+    const area = await this.db.query.areas.findFirst({
+      where: eq(areas.id, areaId),
+    });
+    if (!area) return true;
+    const totalMeters = Number(area.totalMeters) + 1;
     const updatedArea = await this.db
       .update(areas)
       .set({ totalMeters: totalMeters.toString() })
       .where(eq(areas.id, areaId))
       .returning();
+    const mapedOldAreaData: AreaPayload = mapAreaToAreaResponse(area);
+    const mapedUpdatedArea: AreaPayload = mapAreaToAreaResponse(updatedArea[0]);
+    const event = new AreaUpdatedEvent(EventType.AREA_UPDATED, {
+      old: mapedOldAreaData,
+      new: mapedUpdatedArea,
+    });
+    this.eventService.publish(EventType.AREA_UPDATED, event);
     return updatedArea[0];
+  }
+
+  async decrementAreaTotalMeter(areaId: string) {
+    const area = await this.db.query.areas.findFirst({
+      where: eq(areas.id, areaId),
+    });
+    if (!area) return true;
+    const totalMeters = Number(area.totalMeters) - 1;
+    const updatedArea = await this.db
+      .update(areas)
+      .set({ totalMeters: totalMeters.toString() })
+      .where(eq(areas.id, areaId))
+      .returning();
+    const mapedOldAreaData: AreaPayload = mapAreaToAreaResponse(area);
+    const mapedUpdatedArea: AreaPayload = mapAreaToAreaResponse(updatedArea[0]);
+    const event = new AreaUpdatedEvent(EventType.AREA_UPDATED, {
+      old: mapedOldAreaData,
+      new: mapedUpdatedArea,
+    });
+    this.eventService.publish(EventType.AREA_UPDATED, event);
+    return updatedArea[0];
+  }
+
+  @Subscribe(EventType.METER_CREATED)
+  onMeterCreated(event: MeterCreatedEvent) {
+    this.incrementAreaTotalMeter(event.data.areaId).catch((e) =>
+      console.error(e),
+    );
+  }
+
+  @Subscribe(EventType.METER_UPDATED)
+  onMeterUpdated(event: MeterUpdatedEvent) {
+    if (event.data.new.areaId == event.data.old.areaId) return;
+
+    this.incrementAreaTotalMeter(event.data.new.areaId).catch((e) =>
+      console.error(e),
+    );
+    this.decrementAreaTotalMeter(event.data.old.areaId).catch((e) =>
+      console.error(e),
+    );
   }
 
   async getAreaById(params: { areaId: string }): Promise<AreaResponseDto> {
@@ -120,64 +187,25 @@ export class AreaService {
     return mapAreaToAreaResponse(area);
   }
 
-  async listAreaTariff(
-    areaId: string,
-    filter: {
-      tariff?: number;
-      effectiveFromStart?: Date;
-      effectiveFromEnd?: Date;
-      page: number;
-      pageSize: number;
-    },
-  ) {
-    const paginatedTariffs = await this.areaTariffService.getTariffsByAreaId(
-      areaId,
-      filter,
-    );
-    return paginatedTariffs;
-  }
-
-  async setTariff(id: string, setAreaTariffDto: SetAreaTariffDto) {
-    const area = await this.db.query.areas.findFirst({
-      where: eq(areas.id, id),
-    });
-    if (!area) {
-      throw new BadRequestException('Area not found');
-    }
-    if (Number(area.currentTariff ?? 0) === setAreaTariffDto.tariff) {
-      throw new BadRequestException(
-        'Area already has this tariff set, no need to update.',
-      );
-    }
+  async setCurrentAreaTariff(params: { areaId: string }) {
     const currentDate = new Date();
-    if (setAreaTariffDto.effectiveFrom < currentDate) {
-      throw new BadRequestException('Effective date must be in the future.');
-    }
-    const lastSetTariff = await this.areaTariffService.getLastTariffForArea({
-      areaId: area.id,
-      tariff: area.currentTariff,
-    });
-    if (
-      lastSetTariff &&
-      lastSetTariff.effectiveFrom > setAreaTariffDto.effectiveFrom
-    ) {
-      throw new BadRequestException(
-        'Cannot set a tariff with an effective date earlier than the last set tariff.',
-      );
-    }
+    const currentAreaTariff = await this.tariffService.getAreaCurrentDateTariff(
+      { areaId: params.areaId, date: currentDate },
+    );
+    if (!currentAreaTariff) return;
     await this.db
       .update(areas)
       .set({
-        currentTariff: setAreaTariffDto.tariff.toString(),
+        currentTariff: currentAreaTariff.tariff!.toString(),
       })
-      .where(eq(areas.id, id));
-    await this.areaTariffService.createTariff({
-      areaId: area.id,
-      areaName: area.areaName,
-      tariff: setAreaTariffDto.tariff,
-      effectiveFrom: setAreaTariffDto.effectiveFrom,
-    });
-    return true;
+      .where(eq(areas.id, params.areaId));
+  }
+
+  @Subscribe(EventType.AREA_TARIFF_CREATED)
+  onAreaTariffCreated(event: AreaTariffCreatedEvent) {
+    this.setCurrentAreaTariff({ areaId: event.data.areaId }).catch((e) =>
+      console.log(e),
+    );
   }
 
   async assignAreaToLeader(id: string, body: AssignAreaToLeaderDto) {

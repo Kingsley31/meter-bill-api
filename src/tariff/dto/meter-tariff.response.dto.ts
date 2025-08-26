@@ -22,6 +22,13 @@ export class MeterTariffResponseDto {
   meterNumber: string;
 
   @ApiProperty({
+    description: 'Unique identifier for the meter area',
+    format: 'uuid',
+    example: 'a1b2c3d4-e5f6-7890-abcd-1234567890ef',
+  })
+  areaId: string;
+
+  @ApiProperty({
     description: 'The tariff rate per kwh.',
     type: Number,
     example: 1.2,

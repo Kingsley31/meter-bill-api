@@ -3,19 +3,13 @@ import { MeterController } from './meter.controller';
 import { MeterService } from './meter.service';
 import { MeterReadingService } from './meter-reading.service';
 import { FileModule } from 'src/file/file.module';
-import { MeterTariffService } from './meter-tariff.service';
 import { MeterReadingUpdateService } from './meter-reading-update.service';
-import { AreaModule } from 'src/area/area.module';
+import { TariffModule } from 'src/tariff/tariff.module';
 
 @Module({
-  imports: [FileModule, AreaModule],
+  imports: [FileModule, TariffModule],
   controllers: [MeterController],
-  providers: [
-    MeterReadingService,
-    MeterService,
-    MeterTariffService,
-    MeterReadingUpdateService,
-  ],
+  providers: [MeterReadingService, MeterService, MeterReadingUpdateService],
   exports: [MeterService],
 })
 export class MeterModule {}

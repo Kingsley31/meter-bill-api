@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { AreaService } from './area.service';
 import {
   ApiBody,
@@ -22,9 +14,6 @@ import { AreaStatsResponseDto } from './dtos/area-stats.response.dto';
 import { ApiPaginatedResponse } from 'src/common/decorators/api-paginated-response';
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
 import { ListAreaQueryDto } from './dtos/list-area.dto';
-import { AreaTariffResponseDto } from './dtos/area-tariff.response.dto';
-import { ListAreaTariffsQueryDto } from './dtos/list-area-tariffs.dto';
-import { SetAreaTariffDto } from './dtos/set-area-tariff.dto';
 import { AssignAreaToLeaderDto } from './dtos/assign-area-to-leader.dto';
 import { AreaLeaderResponseDto } from './dtos/area-leader.response.dto';
 import { ListAreaLeaderQueryDto } from './dtos/list-area-leader.dto';
@@ -91,48 +80,6 @@ export class AreaController {
   })
   async getAreaById(@Param('id') id: string): Promise<AreaResponseDto> {
     return this.areaService.getAreaById({ areaId: id });
-  }
-
-  @Get(':id/tariffs')
-  @ApiOperation({
-    summary: 'List the tariffs of an area',
-    description:
-      'Returns a paginated list of an area tariffs based on the provided filters.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'The ID of the area',
-    type: String,
-    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
-  })
-  @ApiPaginatedResponse({ model: AreaTariffResponseDto })
-  async listAreaTariffs(
-    @Param('id') id: string,
-    @Query() filter: ListAreaTariffsQueryDto,
-  ): Promise<PaginatedResponseDto<AreaTariffResponseDto>> {
-    return this.areaService.listAreaTariff(id, filter);
-  }
-
-  @Patch(':id/tariff')
-  @ApiOperation({
-    summary: 'Set Area tariff',
-    description: 'Set a tariff for a single area.',
-  })
-  @ApiOkResponse({
-    description: 'The area tariff has been successfully set.',
-    type: Boolean,
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'The ID of the area',
-    type: String,
-    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
-  })
-  setTariff(
-    @Param('id') id: string,
-    @Body() setAreaTariffDto: SetAreaTariffDto,
-  ) {
-    return this.areaService.setTariff(id, setAreaTariffDto);
   }
 
   @Post(':id/leaders')

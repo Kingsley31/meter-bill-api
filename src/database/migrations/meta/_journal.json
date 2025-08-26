@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1753739008813,
-      "tag": "0000_omniscient_bloodscream",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1753898890214,
-      "tag": "0001_pretty_silver_centurion",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1753993101787,
-      "tag": "0002_lowly_tyger_tiger",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1754057556989,
-      "tag": "0003_flaky_living_lightning",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1754419914591,
-      "tag": "0004_nasty_manta",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1754606634492,
-      "tag": "0005_amusing_iron_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1754615842875,
-      "tag": "0006_talented_hulk",
+      "when": 1756211583355,
+      "tag": "0000_previous_harpoon",
       "breakpoints": true
     }
   ]
