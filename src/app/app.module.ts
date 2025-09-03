@@ -10,11 +10,16 @@ import { AreaModule } from 'src/area/area.module';
 import { TariffModule } from 'src/tariff/tariff.module';
 import { EventModule } from 'src/event/event.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { BillModule } from 'src/bill/bill.module';
+import { CommonModule } from 'src/common/common.module';
+import { QueueModule, QueueType } from 'src/queue/queue.module';
 
 @Module({
   imports: [
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
+    QueueModule.forRoot({ type: QueueType.IN_MEMORY }),
+    CommonModule,
     EventModule,
     DatabaseModule,
     MeterModule,
@@ -22,6 +27,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     CustomerMeterModule,
     AreaModule,
     TariffModule,
+    BillModule,
   ],
   controllers: [AppController],
   providers: [AppService],

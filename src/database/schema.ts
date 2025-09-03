@@ -22,6 +22,19 @@ import { areas, areaLeaders, areaLeaderRelations } from 'src/area/area.schema';
 import { meterTariffs, areaTariffs } from 'src/tariff/tariff.schema';
 export * from 'src/tariff/tariff.schema';
 
+import {
+  billGenerationRequests,
+  bills,
+  billRelations,
+  billBreakdowns,
+  billBreakdownRelations,
+  invoiceSequences,
+  recipients,
+  recipientRelations,
+} from 'src/bill/bill.schema';
+
+export * from 'src/bill/bill.schema';
+
 const schema = {
   meters,
   meterSubmeters,
@@ -37,6 +50,14 @@ const schema = {
   areaTariffs,
   areaLeaders,
   areaLeaderRelations,
+  billGenerationRequests,
+  bills,
+  billRelations,
+  billBreakdowns,
+  billBreakdownRelations,
+  recipients,
+  recipientRelations,
+  invoiceSequences,
 };
 
 export default schema;

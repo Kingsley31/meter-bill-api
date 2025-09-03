@@ -9,4 +9,7 @@ export enum EventType {
   AREA_TARIFF_UPDATED = 'area_tariff_updated',
   METER_ASSIGNED = 'meter_assined',
   METER_UNASSIGNED = 'meter_unassinged',
+  SINGLE_METER_BILL_GENERATED = 'single_meter_bill_ generated',
+  AREA_CONSOLIDATED_BILL_GENERATED = 'area_consolidated_bill_generated',
+  CUSTOMER_CONSOLIDATED_BILL_GENERATED = 'customer_consolidated_bill_generated',
 }

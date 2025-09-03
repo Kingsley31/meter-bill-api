@@ -7,7 +7,7 @@ import { Injectable } from '@nestjs/common';
 export class EventService {
   constructor(private eventEmitter: EventEmitter2) {}
 
-  publish(eventType: EventType, event: BaseEvent) {
+  publish<T>(eventType: EventType, event: BaseEvent<T>) {
     this.eventEmitter.emit(eventType, event);
   }
 }
