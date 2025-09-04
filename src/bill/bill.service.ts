@@ -30,6 +30,7 @@ import { BillGenrationRequestQueryDto } from './bill-generation-request/dtos/lis
 import { ListBillQueryDto } from './dtos/list-bills.dto';
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
 import { BillResponse } from './dtos/bill.response.dto';
+import { FileService } from 'src/file/file.service';
 
 @Injectable()
 export class BillService {
@@ -39,6 +40,7 @@ export class BillService {
     private readonly meterBillService: MeterBillService,
     private readonly customerMeterBillService: CustomerMeterBillService,
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly fileSevice: FileService,
   ) {}
 
   async generateAreaBills(
@@ -280,11 +282,17 @@ export class BillService {
         billRecipients: true,
       },
     });
+    const mappedBillPromise = billsData.map(async (bill) => {
+      return {
+        ...bill,
+        totalAmountDue: Number(bill.totalAmountDue),
+        pdfUrl: await this.fileSevice.getSignedUrl(bill.pdfUrl!),
+      };
+    });
+    const mappedBills = await Promise.all(mappedBillPromise);
 
     return {
-      data: billsData.map((bill) => {
-        return { ...bill, totalAmountDue: Number(bill.totalAmountDue) };
-      }) as BillResponse[],
+      data: mappedBills as BillResponse[],
       total: Number(total),
       page,
       pageSize,
