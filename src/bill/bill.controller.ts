@@ -1,5 +1,11 @@
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { BillService } from './bill.service';
 import { AreaBillsGenerationRequest } from './bill-generation-request/dtos/generate-area-bills-request.dto';
 import { BillGenerationResponse } from './bill-generation-request/dtos/bill-generation-request.response.dto';
@@ -10,6 +16,10 @@ import { BillGenrationRequestQueryDto } from './bill-generation-request/dtos/lis
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
 import { BillResponse } from './dtos/bill.response.dto';
 import { ListBillQueryDto } from './dtos/list-bills.dto';
+import { BillStatsResponseDto } from './dtos/bill-stats.response.dto';
+import { BillStatsFilterDto } from './dtos/bill-stats-filter.dto';
+import { ListBillBreakdownQueryDto } from './bill-breakdown/dtos/list-meter-reading-dto';
+import { BillBreakdownResponseDto } from './bill-breakdown/dtos/bill-breakdowns.response.dto';
 // import { Response } from 'express';
 
 @ApiTags('bills')
@@ -91,6 +101,25 @@ export class BillController {
     return this.billService.listBills(filter);
   }
 
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get bill by ID',
+    description: 'Returns a bill.',
+  })
+  @ApiOkResponse({
+    description: 'The bill have been successfully retrieved.',
+    type: BillResponse,
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the bill',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  async getBillById(@Param('id') id: string): Promise<BillResponse> {
+    return this.billService.getBillById({ billId: id });
+  }
+
   @Get('generation-requests')
   @ApiOperation({
     description: 'list bill generation requests.',
@@ -100,5 +129,40 @@ export class BillController {
     @Query() filter: BillGenrationRequestQueryDto,
   ): Promise<PaginatedResponseDto<BillGenerationResponse>> {
     return this.billService.listBillGenerationRequests(filter);
+  }
+
+  @Get('/stats')
+  @ApiOperation({
+    summary: 'Get bill statistics',
+    description: 'Returns statistics about the bills in the system.',
+  })
+  @ApiOkResponse({
+    description: 'The meter statistics have been successfully retrieved.',
+    type: BillStatsResponseDto,
+  })
+  async getBillStats(
+    @Query() query: BillStatsFilterDto,
+  ): Promise<BillStatsResponseDto> {
+    return this.billService.getBillStats(query);
+  }
+
+  @Get(':id/breakdowns')
+  @ApiOperation({
+    summary: 'List the breakdowns of a bill',
+    description:
+      'Returns a paginated list of a bill breakdown based on the provided filters.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the bill',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  @ApiPaginatedResponse({ model: BillBreakdownResponseDto })
+  async listBillBreakdowns(
+    @Param('id') id: string,
+    @Query() filter: ListBillBreakdownQueryDto,
+  ): Promise<PaginatedResponseDto<BillBreakdownResponseDto>> {
+    return this.billService.listBillBreakdowns(id, filter);
   }
 }

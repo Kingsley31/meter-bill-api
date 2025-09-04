@@ -26,6 +26,16 @@ export class ListBillQueryDto {
   generatedStartDate?: Date | undefined;
 
   @ApiPropertyOptional({
+    type: String,
+    description: 'X-Request-Id for the bill generation request',
+    example: 'REQ-123456',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  requestId?: string | undefined;
+
+  @ApiPropertyOptional({
     description: 'Date the bill was generated end (ISO 8601 format)',
     example: '2024-07-31T23:59:59.999Z',
     required: false,

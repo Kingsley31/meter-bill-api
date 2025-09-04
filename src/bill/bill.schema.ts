@@ -57,7 +57,7 @@ export const bills = pgTable('bills', {
   scope: varchar('scope').notNull(), // e.g. area-wide, system-wide
   areaId: uuid('area_id'),
   areaName: varchar('area_name'),
-  paymentStatus: varchar('payment_status').default('pending').notNull(),
+  paymentStatus: varchar('payment_status').default('pending').notNull(), // pending | paid
   createdAt: timestamp('created_at')
     .default(sql`now()`)
     .notNull(),
@@ -99,6 +99,7 @@ export const billBreakdowns = pgTable('bill_breakdowns', {
 });
 
 export type CreateBillBreakdown = typeof billBreakdowns.$inferInsert;
+export type BillBreakdown = typeof billBreakdowns.$inferSelect;
 
 // Recipients Table
 export const recipients = pgTable('recipients', {

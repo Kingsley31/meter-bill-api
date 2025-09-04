@@ -31,6 +31,11 @@ import { ListBillQueryDto } from './dtos/list-bills.dto';
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
 import { BillResponse } from './dtos/bill.response.dto';
 import { FileService } from 'src/file/file.service';
+import { BillStatsFilterDto } from './dtos/bill-stats-filter.dto';
+import { BillStatsResponseDto } from './dtos/bill-stats.response.dto';
+import { PaymentStatus } from './bill.enum';
+import { BillBreakdownService } from './bill-breakdown/bill-breakdown.service';
+import { ListBillBreakdownQueryDto } from './bill-breakdown/dtos/list-meter-reading-dto';
 
 @Injectable()
 export class BillService {
@@ -41,6 +46,7 @@ export class BillService {
     private readonly customerMeterBillService: CustomerMeterBillService,
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly fileSevice: FileService,
+    private readonly billBreakdownService: BillBreakdownService,
   ) {}
 
   async generateAreaBills(
@@ -224,6 +230,7 @@ export class BillService {
       search,
       generatedStartDate,
       generatedEndDate,
+      requestId,
       scope,
       areaId,
       isConsolidated,
@@ -256,6 +263,9 @@ export class BillService {
     }
     if (scope) {
       where.push(eq(bills.scope, scope));
+    }
+    if (requestId) {
+      where.push(eq(bills.requestId, requestId));
     }
     if (areaId) {
       where.push(eq(bills.areaId, areaId));
@@ -298,5 +308,75 @@ export class BillService {
       pageSize,
       hasMore: offset + billsData.length < Number(total),
     };
+  }
+
+  async getBillStats(
+    filter: BillStatsFilterDto,
+  ): Promise<BillStatsResponseDto> {
+    const { areaId } = filter;
+    // Total Payable bills
+    const totalPayableBillsWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalPayableBillsWhere.push(eq(bills.areaId, areaId));
+    totalPayableBillsWhere.push(eq(bills.isConsolidated, false));
+    const [{ count: totalPayableBills }] = await this.db
+      .select({ count: count() })
+      .from(bills)
+      .where(
+        totalPayableBillsWhere.length
+          ? and(...totalPayableBillsWhere)
+          : undefined,
+      );
+
+    // Total Paid bills
+    const totalPaidBillsWhere: Array<
+      ReturnType<typeof eq> | ReturnType<typeof or>
+    > = [];
+    if (areaId) totalPaidBillsWhere.push(eq(bills.areaId, areaId));
+    totalPaidBillsWhere.push(eq(bills.paymentStatus, PaymentStatus.PAID));
+    const [{ count: totalPaidBills }] = await this.db
+      .select({ count: count() })
+      .from(bills)
+      .where(
+        totalPaidBillsWhere.length ? and(...totalPaidBillsWhere) : undefined,
+      );
+
+    return {
+      totalPayable: Number(totalPayableBills),
+      totalPaid: Number(totalPaidBills),
+    };
+  }
+
+  async getBillById(params: { billId: string }): Promise<BillResponse> {
+    const bill = await this.db.query.bills.findFirst({
+      where: eq(bills.id, params.billId),
+      with: {
+        billRecipients: true,
+      },
+    });
+    if (!bill) {
+      throw new BadRequestException('Bill not found');
+    }
+    const mappedBill = {
+      ...bill,
+      totalAmountDue: Number(bill.totalAmountDue),
+      pdfUrl: await this.fileSevice.getSignedUrl(bill.pdfUrl!),
+    };
+    return mappedBill as BillResponse;
+  }
+
+  async listBillBreakdowns(billId: string, filter: ListBillBreakdownQueryDto) {
+    const bill = await this.db.query.bills.findFirst({
+      where: eq(bills.id, billId),
+    });
+    if (!bill) {
+      throw new BadRequestException('Bill not found');
+    }
+    const response = await this.billBreakdownService.getBreakdownsByBillId(
+      billId,
+      filter,
+    );
+    return response;
   }
 }

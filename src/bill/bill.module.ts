@@ -9,6 +9,7 @@ import { BillGenerationRequestService } from './bill-generation-request/bill-gen
 import { MeterModule } from 'src/meter/meter.module';
 import { CustomerMeterModule } from 'src/customer-meter/customer-meter.module';
 import { AreaModule } from 'src/area/area.module';
+import { BillBreakdownService } from './bill-breakdown/bill-breakdown.service';
 
 @Module({
   imports: [
@@ -19,6 +20,11 @@ import { AreaModule } from 'src/area/area.module';
     AreaModule,
   ],
   controllers: [BillController],
-  providers: [BillService, BillProcessor, BillGenerationRequestService],
+  providers: [
+    BillService,
+    BillProcessor,
+    BillGenerationRequestService,
+    BillBreakdownService,
+  ],
 })
 export class BillModule {}
