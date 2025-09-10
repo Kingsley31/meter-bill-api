@@ -101,6 +101,32 @@ export class BillController {
     return this.billService.listBills(filter);
   }
 
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Get bill statistics',
+    description: 'Returns statistics about the bills in the system.',
+  })
+  @ApiOkResponse({
+    description: 'The meter statistics have been successfully retrieved.',
+    type: BillStatsResponseDto,
+  })
+  async getBillStats(
+    @Query() query: BillStatsFilterDto,
+  ): Promise<BillStatsResponseDto> {
+    return this.billService.getBillStats(query);
+  }
+
+  @Get('generation-requests')
+  @ApiOperation({
+    description: 'list bill generation requests.',
+  })
+  @ApiPaginatedResponse({ model: BillGenerationResponse })
+  async listBillGenerationRequest(
+    @Query() filter: BillGenrationRequestQueryDto,
+  ): Promise<PaginatedResponseDto<BillGenerationResponse>> {
+    return this.billService.listBillGenerationRequests(filter);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get bill by ID',
@@ -118,32 +144,6 @@ export class BillController {
   })
   async getBillById(@Param('id') id: string): Promise<BillResponse> {
     return this.billService.getBillById({ billId: id });
-  }
-
-  @Get('generation-requests')
-  @ApiOperation({
-    description: 'list bill generation requests.',
-  })
-  @ApiPaginatedResponse({ model: BillGenerationResponse })
-  async listBillGenerationRequest(
-    @Query() filter: BillGenrationRequestQueryDto,
-  ): Promise<PaginatedResponseDto<BillGenerationResponse>> {
-    return this.billService.listBillGenerationRequests(filter);
-  }
-
-  @Get('/stats')
-  @ApiOperation({
-    summary: 'Get bill statistics',
-    description: 'Returns statistics about the bills in the system.',
-  })
-  @ApiOkResponse({
-    description: 'The meter statistics have been successfully retrieved.',
-    type: BillStatsResponseDto,
-  })
-  async getBillStats(
-    @Query() query: BillStatsFilterDto,
-  ): Promise<BillStatsResponseDto> {
-    return this.billService.getBillStats(query);
   }
 
   @Get(':id/breakdowns')

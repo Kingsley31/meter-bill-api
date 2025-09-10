@@ -421,7 +421,7 @@ export class BillProcessor implements Processor {
       scope: params.data.scope,
       createdAt: dateGenerated,
       pdfUrl: pdfFileKey,
-      totalAmountDue: meterBill.totalAmountDue.toString(),
+      totalAmountDue: totalAmountDue.toString(),
     });
     await this.billService.createBillBreakdowns(
       meterReadingBreakdowns.map((breakdown) => {
