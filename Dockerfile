@@ -1,35 +1,36 @@
-# Stage 1: Build the application
-FROM node:22.11.0-alpine AS builder
+# Stage 1: Build
+FROM node:22.11.0 AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy only package files first (better caching)
 COPY package*.json ./
 
-# Install dependencies (dev included for build)
+# Install ALL deps (including dev, for build)
 RUN npm ci
 
-# Copy source code
+# Copy the rest of the source
 COPY . .
 
-# Build the Nest.js application
+# Build the app
 RUN npm run build
 
-# Stage 2: Run the application
-FROM node:22.11.0-alpine AS runner
+# Stage 2: Production
+FROM node:22.11.0-slim AS production
 
 WORKDIR /app
 
-# Copy only production dependencies
+# Copy only package files
 COPY package*.json ./
-RUN npm ci --only=production
 
-# Copy built files from builder stage
+# Install ONLY production dependencies
+RUN npm ci --omit=dev
+
+# Copy build output + node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
 
-# Expose the application port
+# Expose port
 EXPOSE 3000
 
-# Start the app
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]
