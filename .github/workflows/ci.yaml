@@ -60,7 +60,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          IMAGE_ID=ghcr.io/${{ github.repository }}
+          IMAGE_ID=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           VERSION=$VERSION
 
           echo "Building $IMAGE_ID:$VERSION"
@@ -68,7 +68,7 @@ jobs:
 
       - name: Push Docker image
         run: |
-          IMAGE_ID=ghcr.io/${{ github.repository }}
+          IMAGE_ID=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           VERSION=$VERSION
 
           docker push $IMAGE_ID:$VERSION
