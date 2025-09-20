@@ -13,4 +13,18 @@ export const config = {
   AWS_CLOUDFRONT_ENDPOINT: process.env.AWS_CLOUDFRONT_ENDPOINT as string,
   SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL as string,
   SUPER_ADMIN_PASSWORD: process.env.SUPER_ADMIN_PASSWORD as string,
+  FRONTEND_BASE_URL: process.env.FRONTEND_BASE_URL as string,
 };
+
+function assertConfigValid<T extends Record<string, any>>(obj: T): void {
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined || value === null || value === '') {
+      throw new Error(
+        `Config validation error: Field "${key}" is ${value === '' ? 'empty string' : value}`,
+      );
+    }
+  }
+}
+
+// Run the validation
+assertConfigValid(config);

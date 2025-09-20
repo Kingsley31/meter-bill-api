@@ -6,10 +6,16 @@ import {
   SwaggerModule,
 } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { config } from 'src/config/config';
 
-async function bootstrap() {
+async function bootstrap(frontendUrl: string) {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  app.enableCors({
+    origin: [frontendUrl], // explicitly allow production frontend
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization', // include headers your frontend sends
+    credentials: true, // needed if sending cookies or auth headers
+  });
   app.enableShutdownHooks();
   app.useGlobalPipes(
     new ValidationPipe({
@@ -34,4 +40,4 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, documentFactory);
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
-bootstrap();
+bootstrap(config.FRONTEND_BASE_URL);
