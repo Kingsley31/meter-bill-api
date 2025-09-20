@@ -23,13 +23,14 @@ export class FileTypeValidationPipe implements PipeTransform {
   }
 }
 
-const MAX_METER_IMAGE_SIZE_BYTES = 1000000;
+const MAX_METER_IMAGE_SIZE_BYTES = 3000000;
 
 export const VALIDATION_PIPE = new ParseFilePipe({
   validators: [
     new MaxFileSizeValidator({
       maxSize: MAX_METER_IMAGE_SIZE_BYTES,
-      message: (maxSize) => `uploaded file is greater than ${maxSize}bytes`,
+      message: () =>
+        `uploaded file is greater than ${Math.round(MAX_METER_IMAGE_SIZE_BYTES / 1048576)}mb.`,
     }),
     new FileTypeValidator({
       fileType: /^(image\/(png|jpeg|jpg|gif)|application\/pdf)$/i,
