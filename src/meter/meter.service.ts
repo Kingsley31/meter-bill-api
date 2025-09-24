@@ -1322,6 +1322,25 @@ export class MeterService {
     console.log('Meter Derived Meters Affected Readings Deleted Sucessfully!');
   }
 
+  async resetMeterCurrentAndPreviousReadings(meterId: string) {
+    const meter = await this.getMeterById({ meterId });
+    if (!meter) {
+      throw new BadRequestException('Meter not found');
+    }
+    await this.db
+      .update(meters)
+      .set({
+        currentKwhReading: '0',
+        currentKwhReadingDate: null,
+        currentKwhConsumption: '0',
+        previousKwhReading: '0',
+        previousKwhConsumption: '0',
+        previousKwhReadingDate: null,
+      })
+      .where(eq(meters.id, meterId));
+    return true;
+  }
+
   async deleteMeterReading(meterId: string, readingId: string) {
     const meter = await this.getMeterById({ meterId });
     if (!meter) {
@@ -1344,6 +1363,14 @@ export class MeterService {
       );
     }
     await this.meterReadingService.deleteReadingById(readingId);
+    const meterTotalReadings =
+      await this.meterReadingService.countReadingsByMeterId(meterId);
+    if (meterTotalReadings == 0) {
+      await this.resetMeterCurrentAndPreviousReadings(meterId);
+      return true;
+    }
+    // Recalculate and update all derived meters that use this meter
+    // as reference or submeter.
     this.deleteMeterDerivedMeterConsumptionByReadingDate({
       meterId: reading.meterId,
       readingDate: reading.readingDate,

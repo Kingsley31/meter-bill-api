@@ -196,6 +196,14 @@ export class MeterReadingService {
     return result.length > 0;
   }
 
+  async countReadingsByMeterId(meterId: string): Promise<number> {
+    const [{ count: totalCount }] = await this.db
+      .select({ count: count() })
+      .from(meterReadings)
+      .where(eq(meterReadings.meterId, meterId));
+    return Number(totalCount);
+  }
+
   async getMeterCurrentReading(meterId: string) {
     const meterCurrentReading = await this.db.query.meterReadings.findFirst({
       where: eq(meterReadings.meterId, meterId),

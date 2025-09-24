@@ -10,4 +10,10 @@ export class FileService implements IFileService {
   getSignedUrl(fileId: string): Promise<string> {
     throw new Error(`Method not implemented. to get signed url for ${fileId}`);
   }
+
+  getUploadSignedUrl(fileId: string): Promise<string> {
+    throw new Error(
+      `Method not implemented. to get upload signed url for ${fileId}`,
+    );
+  }
 }

@@ -9,6 +9,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { config } from 'src/config/config';
 
 async function bootstrap(frontendUrl: string) {
+  console.log(frontendUrl);
   const app = await NestFactory.create(AppModule);
   app.enableCors({
     origin: [frontendUrl], // explicitly allow production frontend
@@ -16,6 +17,7 @@ async function bootstrap(frontendUrl: string) {
     allowedHeaders: 'Content-Type, Accept, Authorization', // include headers your frontend sends
     credentials: true, // needed if sending cookies or auth headers
   });
+  // app.enableCors();
   app.enableShutdownHooks();
   app.useGlobalPipes(
     new ValidationPipe({

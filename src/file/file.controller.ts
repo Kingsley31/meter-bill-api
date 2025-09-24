@@ -69,6 +69,23 @@ export class FileController {
     return await this.fileService.deleteFile(fileId);
   }
 
+  @Get(':fileId/upload/signed-url')
+  @ApiOperation({ summary: 'Generate a signed URL for uploading a file' })
+  @ApiParam({
+    name: 'fileId',
+    required: true,
+    description:
+      'The desired file name and extension (e.g., 374884433_filename.png)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Signed Upload URL generated',
+    schema: { type: 'string' },
+  })
+  async getUploadSignedUrl(@Param('fileId') fileId: string): Promise<string> {
+    return await this.fileService.getUploadSignedUrl(fileId);
+  }
+
   @Get(':fileId/signed-url')
   @ApiOperation({ summary: 'Generate a signed URL for accessing a file' })
   @ApiParam({ name: 'fileId', required: true })

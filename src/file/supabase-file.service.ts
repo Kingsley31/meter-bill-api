@@ -60,4 +60,16 @@ export class SupabaseFileService implements IFileService {
 
     return data.signedUrl;
   }
+
+  async getUploadSignedUrl(fileId: string): Promise<string> {
+    const { data, error } = await this.supabase.storage
+      .from(BUCKET_NAME)
+      .createSignedUploadUrl(fileId);
+
+    if (error || !data) {
+      throw new Error(`Failed to get upload signed URL: ${error?.message}`);
+    }
+
+    return data.signedUrl;
+  }
 }
