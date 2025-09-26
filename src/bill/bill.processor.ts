@@ -32,6 +32,7 @@ import { DATABASE } from 'src/database/constants';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import schema from 'src/database/schema';
 import { sql } from 'drizzle-orm';
+import { Decimal } from 'decimal.js';
 import { CustomerMeterBillService } from 'src/customer-meter/customer-meter-bill.service';
 import { BillService } from './bill.service';
 import { EventService } from 'src/event/event.service';
@@ -134,10 +135,12 @@ export class BillProcessor implements Processor {
       .replace(',', '')
       .replace(' ', '-');
     const invoiceNumber = await this.generateInvoiceNumber();
-    let totalAmountDue = 0;
+    let totalAmountDue = new Decimal(0);
     const customerBillBreakdowns: GeneratedBillBreakdown[] =
       customerReadingBreakdowns.map((breakdown) => {
-        totalAmountDue += Number(breakdown.totalAmount);
+        totalAmountDue = totalAmountDue.plus(
+          new Decimal(breakdown.totalAmount),
+        );
         return {
           ...breakdown,
           totalAmount: breakdown.totalAmount.toLocaleString(),
@@ -244,10 +247,12 @@ export class BillProcessor implements Processor {
       .replace(',', '')
       .replace(' ', '-');
     const invoiceNumber = await this.generateInvoiceNumber();
-    let totalAmountDue = 0;
+    let totalAmountDue = new Decimal(0);
     const areaBillBreakdowns: GeneratedBillBreakdown[] =
       areaReadingBreakdowns.map((breakdown) => {
-        totalAmountDue += Number(breakdown.totalAmount);
+        totalAmountDue = totalAmountDue.plus(
+          new Decimal(breakdown.totalAmount),
+        );
         return {
           ...breakdown,
           totalAmount: breakdown.totalAmount.toLocaleString(),
@@ -380,10 +385,12 @@ export class BillProcessor implements Processor {
       .replace(',', '')
       .replace(' ', '-');
     const invoiceNumber = await this.generateInvoiceNumber();
-    let totalAmountDue = 0;
+    let totalAmountDue = new Decimal(0);
     const meterBillBreakdowns: GeneratedBillBreakdown[] =
       meterReadingBreakdowns.map((breakdown) => {
-        totalAmountDue += Number(breakdown.totalAmount);
+        totalAmountDue = totalAmountDue.plus(
+          new Decimal(breakdown.totalAmount),
+        );
         return {
           ...breakdown,
           totalAmount: breakdown.totalAmount.toLocaleString(),

@@ -64,6 +64,7 @@ import { MeterTariffUpdatedEvent } from 'src/event/event-types/tariff/meter-tari
 import { AreaTariffCreatedEvent } from 'src/event/event-types/tariff/area-tariff-created.event';
 import { AreaTariffPayload } from 'src/event/event-types/tariff/area-tariff.payload';
 import { AreaTariffUpdatedEvent } from 'src/event/event-types/tariff/area-tariff-updated.event';
+import { Decimal } from 'decimal.js';
 
 @Injectable()
 export class MeterService {
@@ -846,7 +847,9 @@ export class MeterService {
         : null,
       tariffEndDate: consumptionTariff ? consumptionTariff.endDate : null,
       amount: consumptionTariff
-        ? kwhConsumption * consumptionTariff.tariff
+        ? new Decimal(kwhConsumption)
+            .mul(new Decimal(consumptionTariff.tariff))
+            .toNumber()
         : null,
     });
     await this.updateMeterCurrentAndPreviousReadingAndConsumption(id, {
@@ -871,9 +874,12 @@ export class MeterService {
     hasMaxKwhReading: boolean;
     maxKwhReading: number;
   }): number {
-    let kwhConsumption =
-      (params.currentKwhReading - params.previousKwhReading) *
-      params.ctMultiplierFactor;
+    const currentKwh = new Decimal(params.currentKwhReading);
+    const prevKwh = new Decimal(params.previousKwhReading);
+    const maxKwh = new Decimal(params.maxKwhReading);
+    const multiplierFactor = new Decimal(params.ctMultiplierFactor);
+    const crKwhMinusprKwh = currentKwh.minus(prevKwh);
+    let kwhConsumption = crKwhMinusprKwh.mul(params.ctMultiplierFactor);
     // If the current kwhReading is less than previous reading
     // but meter does't have maxkwhReading, throw an error
     // the reading is errornoues.
@@ -888,14 +894,10 @@ export class MeterService {
     // If the current kwhReading is less than previous reading
     // and meter has maxKwhReading, calculate consumption
     if (params.previousKwhReading > params.currentKwhReading) {
-      kwhConsumption =
-        (params.currentKwhReading +
-          params.maxKwhReading +
-          1 -
-          params.previousKwhReading) *
-        params.ctMultiplierFactor;
+      const baseCalc = currentKwh.plus(maxKwh).plus(1).minus(prevKwh);
+      kwhConsumption = baseCalc.mul(multiplierFactor);
     }
-    return kwhConsumption;
+    return kwhConsumption.toNumber();
   }
 
   async updateMeterCurrentAndPreviousReadingAndConsumption(
@@ -1208,28 +1210,35 @@ export class MeterService {
     submeters: SubmeterWithConsumption[],
     referenceMeter: ReferenceMeterWithConsumption,
   ): number {
-    let kwhConsumption = 0;
+    let kwhConsumption = new Decimal(0);
     submeters.forEach((sub) => {
       switch (sub.operator as Operaor) {
         case Operaor.ADD:
-          kwhConsumption =
-            kwhConsumption +
-            (referenceMeter.kwhConsumption + sub.kwhConsumption);
+          kwhConsumption = kwhConsumption.plus(
+            new Decimal(referenceMeter.kwhConsumption).plus(
+              new Decimal(sub.kwhConsumption),
+            ),
+          );
           break;
         case Operaor.MINUS:
-          kwhConsumption =
-            kwhConsumption +
-            (referenceMeter.kwhConsumption - sub.kwhConsumption);
+          kwhConsumption = kwhConsumption.plus(
+            new Decimal(referenceMeter.kwhConsumption).minus(
+              new Decimal(sub.kwhConsumption),
+            ),
+          );
           break;
         case Operaor.MULTIPLICATOR:
-          kwhConsumption =
-            kwhConsumption + referenceMeter.kwhConsumption * sub.kwhConsumption;
+          kwhConsumption = kwhConsumption.plus(
+            new Decimal(referenceMeter.kwhConsumption).mul(
+              new Decimal(sub.kwhConsumption),
+            ),
+          );
           break;
         default:
           break;
       }
     });
-    return kwhConsumption;
+    return kwhConsumption.toNumber();
   }
 
   async deleteMeterDerivedMeterConsumptionByReadingDate(params: {
