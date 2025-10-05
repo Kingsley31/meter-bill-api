@@ -144,6 +144,8 @@ export class BillProcessor implements Processor {
         return {
           ...breakdown,
           totalAmount: breakdown.totalAmount.toLocaleString(),
+          firstReadKwh: breakdown.initialReadKwh,
+          firstReadDate: new Date(breakdown.initialReadDate),
           lastReadDate: new Date(breakdown.lastReadDate).toLocaleDateString(
             'en-US',
             {
@@ -193,8 +195,8 @@ export class BillProcessor implements Processor {
           totalConsumption: breakdown.totalConsumption.toString(),
           tariff: breakdown.tariff.toString(),
           lastReadKwh: breakdown.lastReadKwh.toString(),
-          firstReadKwh: breakdown.firstReadKwh.toString(),
-          firstReadDate: new Date(breakdown.firstReadDate),
+          firstReadKwh: breakdown.initialReadKwh.toString(),
+          firstReadDate: new Date(breakdown.initialReadDate),
           lastReadDate: new Date(breakdown.lastReadDate),
         };
       }),
@@ -256,6 +258,8 @@ export class BillProcessor implements Processor {
         return {
           ...breakdown,
           totalAmount: breakdown.totalAmount.toLocaleString(),
+          firstReadKwh: breakdown.initialReadKwh,
+          firstReadDate: new Date(breakdown.initialReadDate),
           lastReadDate: new Date(breakdown.lastReadDate).toLocaleDateString(
             'en-US',
             {
@@ -306,8 +310,8 @@ export class BillProcessor implements Processor {
           totalConsumption: breakdown.totalConsumption.toString(),
           tariff: breakdown.tariff.toString(),
           lastReadKwh: breakdown.lastReadKwh.toString(),
-          firstReadKwh: breakdown.firstReadKwh.toString(),
-          firstReadDate: new Date(breakdown.firstReadDate),
+          firstReadKwh: breakdown.initialReadKwh.toString(),
+          firstReadDate: new Date(breakdown.initialReadDate),
           lastReadDate: new Date(breakdown.lastReadDate),
         };
       }),
@@ -394,6 +398,8 @@ export class BillProcessor implements Processor {
         return {
           ...breakdown,
           totalAmount: breakdown.totalAmount.toLocaleString(),
+          firstReadKwh: breakdown.initialReadKwh,
+          firstReadDate: new Date(breakdown.initialReadDate),
           lastReadDate: new Date(breakdown.lastReadDate).toLocaleDateString(
             'en-US',
             {
@@ -439,8 +445,8 @@ export class BillProcessor implements Processor {
           totalConsumption: breakdown.totalConsumption.toString(),
           tariff: breakdown.tariff.toString(),
           lastReadKwh: breakdown.lastReadKwh.toString(),
-          firstReadKwh: breakdown.firstReadKwh.toString(),
-          firstReadDate: new Date(breakdown.firstReadDate),
+          firstReadKwh: breakdown.initialReadKwh.toString(),
+          firstReadDate: new Date(breakdown.initialReadDate),
           lastReadDate: new Date(breakdown.lastReadDate),
         };
       }),

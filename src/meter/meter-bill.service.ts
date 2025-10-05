@@ -90,6 +90,24 @@ export class MeterBillService {
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
       ORDER BY ${meterReadings.readingDate} ASC
     )`.as('firstReadDate'),
+          initialReadKwh: sql<number>`
+        COALESCE(
+          LAG(${meterReadings.kwhReading}) OVER (
+            PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
+            ORDER BY ${meterReadings.readingDate} ASC
+          ),
+          0
+        )
+      `.as('initialReadKwh'),
+          initialReadDate: sql<Date>`
+        COALESCE(
+          LAG(${meterReadings.readingDate}) OVER (
+            PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
+            ORDER BY ${meterReadings.readingDate} ASC
+          ),
+          ${meterReadings.readingDate}
+        )
+      `.as('initialReadDate'),
           lastReadKwh:
             sql<number>`LAST_VALUE(${meterReadings.kwhReading}) OVER (
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
@@ -102,7 +120,6 @@ export class MeterBillService {
         .where(
           and(
             eq(meterReadings.meterId, params.meterId),
-            gte(meterReadings.readingDate, params.startDate),
             lte(meterReadings.readingDate, params.endDate),
           ),
         ),
@@ -120,6 +137,8 @@ export class MeterBillService {
         totalAmount: sql<number>`SUM(${readingsWithWindow.amount})`,
         totalConsumption: sql<number>`SUM(${readingsWithWindow.kwhConsumption})`,
         tariff: sql<number>`MAX(${readingsWithWindow.tariff})`,
+        initialReadKwh: sql<number>`MAX(${readingsWithWindow.initialReadKwh})`,
+        initialReadDate: sql<Date>`MAX(${readingsWithWindow.initialReadDate})`,
         firstReadKwh: sql<number>`MAX(${readingsWithWindow.firstReadKwh})`,
         firstReadDate: sql<Date>`MAX(${readingsWithWindow.firstReadDate})`,
         lastReadKwh: sql<number>`MAX(${readingsWithWindow.lastReadKwh})`,
@@ -133,7 +152,8 @@ export class MeterBillService {
         readingsWithWindow.areaName,
         readingsWithWindow.location,
         readingsWithWindow.meterNumber,
-      );
+      )
+      .where(gte(readingsWithWindow.readingDate, params.startDate));
     return results;
   }
 
@@ -155,6 +175,25 @@ export class MeterBillService {
           kwhConsumption: meterReadings.kwhConsumption,
           tariff: meterReadings.tariff,
           readingDate: meterReadings.readingDate,
+          initialReadKwh: sql<number>`
+        COALESCE(
+          LAG(${meterReadings.kwhReading}) OVER (
+            PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
+            ORDER BY ${meterReadings.readingDate} ASC
+          ),
+          0
+        )
+      `.as('initialReadKwh'),
+
+          initialReadDate: sql<Date>`
+        COALESCE(
+          LAG(${meterReadings.readingDate}) OVER (
+            PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
+            ORDER BY ${meterReadings.readingDate} ASC
+          ),
+          ${meterReadings.readingDate}
+        )
+      `.as('initialReadDate'),
           firstReadKwh:
             sql<number>`FIRST_VALUE(${meterReadings.kwhReading}) OVER (
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
@@ -177,7 +216,6 @@ export class MeterBillService {
         .where(
           and(
             eq(meters.areaId, params.areaId),
-            gte(meterReadings.readingDate, params.startDate),
             lte(meterReadings.readingDate, params.endDate),
           ),
         ),
@@ -195,6 +233,8 @@ export class MeterBillService {
         totalAmount: sql<number>`SUM(${readingsWithWindow.amount})`,
         totalConsumption: sql<number>`SUM(${readingsWithWindow.kwhConsumption})`,
         tariff: sql<number>`MAX(${readingsWithWindow.tariff})`,
+        initialReadKwh: sql<number>`MAX(${readingsWithWindow.initialReadKwh})`,
+        initialReadDate: sql<Date>`MAX(${readingsWithWindow.initialReadDate})`,
         firstReadKwh: sql<number>`MAX(${readingsWithWindow.firstReadKwh})`,
         firstReadDate: sql<Date>`MAX(${readingsWithWindow.firstReadDate})`,
         lastReadKwh: sql<number>`MAX(${readingsWithWindow.lastReadKwh})`,
@@ -208,7 +248,8 @@ export class MeterBillService {
         readingsWithWindow.areaName,
         readingsWithWindow.location,
         readingsWithWindow.meterNumber,
-      );
+      )
+      .where(gte(readingsWithWindow.readingDate, params.startDate));
     return results;
   }
 
@@ -230,6 +271,25 @@ export class MeterBillService {
           kwhConsumption: meterReadings.kwhConsumption,
           tariff: meterReadings.tariff,
           readingDate: meterReadings.readingDate,
+          initialReadKwh: sql<number>`
+        COALESCE(
+          LAG(${meterReadings.kwhReading}) OVER (
+            PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
+            ORDER BY ${meterReadings.readingDate} ASC
+          ),
+          0
+        )
+      `.as('initialReadKwh'),
+
+          initialReadDate: sql<Date>`
+        COALESCE(
+          LAG(${meterReadings.readingDate}) OVER (
+            PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
+            ORDER BY ${meterReadings.readingDate} ASC
+          ),
+          ${meterReadings.readingDate}
+        )
+      `.as('initialReadDate'),
           firstReadKwh:
             sql<number>`FIRST_VALUE(${meterReadings.kwhReading}) OVER (
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
@@ -252,7 +312,6 @@ export class MeterBillService {
         .where(
           and(
             inArray(meters.id, params.meterIds),
-            gte(meterReadings.readingDate, params.startDate),
             lte(meterReadings.readingDate, params.endDate),
           ),
         ),
@@ -270,6 +329,8 @@ export class MeterBillService {
         totalAmount: sql<number>`SUM(${readingsWithWindow.amount})`,
         totalConsumption: sql<number>`SUM(${readingsWithWindow.kwhConsumption})`,
         tariff: sql<number>`MAX(${readingsWithWindow.tariff})`,
+        initialReadKwh: sql<number>`MAX(${readingsWithWindow.initialReadKwh})`,
+        initialReadDate: sql<Date>`MAX(${readingsWithWindow.initialReadDate})`,
         firstReadKwh: sql<number>`MAX(${readingsWithWindow.firstReadKwh})`,
         firstReadDate: sql<Date>`MAX(${readingsWithWindow.firstReadDate})`,
         lastReadKwh: sql<number>`MAX(${readingsWithWindow.lastReadKwh})`,
@@ -283,7 +344,8 @@ export class MeterBillService {
         readingsWithWindow.areaName,
         readingsWithWindow.location,
         readingsWithWindow.meterNumber,
-      );
+      )
+      .where(gte(readingsWithWindow.readingDate, params.startDate));
     return results;
   }
 }
