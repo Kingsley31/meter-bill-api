@@ -81,7 +81,7 @@ export class MeterBillService {
           tariff: meterReadings.tariff,
           readingDate: meterReadings.readingDate,
           firstReadKwh:
-            sql<number>`FIRST_VALUE(${meterReadings.kwhReading}) OVER (
+            sql<number>`FIRST_VALUE(${meterReadings.prevKwhReading}) OVER (
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
       ORDER BY ${meterReadings.readingDate} ASC
     )`.as('firstReadKwh'),
@@ -195,7 +195,7 @@ export class MeterBillService {
         )
       `.as('initialReadDate'),
           firstReadKwh:
-            sql<number>`FIRST_VALUE(${meterReadings.kwhReading}) OVER (
+            sql<number>`FIRST_VALUE(${meterReadings.prevKwhReading}) OVER (
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
       ORDER BY ${meterReadings.readingDate} ASC
     )`.as('firstReadKwh'),
@@ -291,7 +291,7 @@ export class MeterBillService {
         )
       `.as('initialReadDate'),
           firstReadKwh:
-            sql<number>`FIRST_VALUE(${meterReadings.kwhReading}) OVER (
+            sql<number>`FIRST_VALUE(${meterReadings.prevKwhReading}) OVER (
       PARTITION BY ${meterReadings.meterId}, ${meterReadings.tariffId}
       ORDER BY ${meterReadings.readingDate} ASC
     )`.as('firstReadKwh'),

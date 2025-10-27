@@ -42,6 +42,8 @@ export class MeterReadingService {
     meterNumber: string;
     readingDate: Date;
     kwhReading: number;
+    prevKwhReading: number;
+    prevKwhReadingId?: string | null;
     kwhConsumption: number;
     meterImage: string;
     tariffId?: string | null;
@@ -56,6 +58,8 @@ export class MeterReadingService {
       .values({
         ...params,
         kwhReading: String(params.kwhReading),
+        prevKwhReading: String(params.prevKwhReading),
+        prevKwhReadingId: params.prevKwhReadingId,
         kwhConsumption: String(params.kwhConsumption),
         tariff: params.tariff ? String(params.tariff) : null,
         amount: params.amount ? String(params.amount) : null,
@@ -252,7 +256,9 @@ export class MeterReadingService {
     updatedBy,
   }: {
     readingId: string;
-    updateData: Partial<typeof meterReadings.$inferInsert>;
+    updateData: Partial<typeof meterReadings.$inferInsert> & {
+      prevKwhReading: string;
+    };
     reason: string;
     updatedBy?: string;
     reading: typeof meterReadings.$inferSelect;
@@ -357,5 +363,29 @@ export class MeterReadingService {
     });
     await Promise.all(deleteImagesPromise);
     return result;
+  }
+
+  async getAllReadingsInDecendingOrderByMeterId(meterId: string) {
+    const allMeterReadings = await this.db.query.meterReadings.findMany({
+      where: eq(meterReadings.meterId, meterId),
+      orderBy: (meterReadings, { desc }) => [desc(meterReadings.readingDate)],
+    });
+    return allMeterReadings;
+  }
+
+  async updateReadingPreviousReading(params: {
+    readingId: string;
+    prevKwhReading: string;
+    prevKwhReadingId: string | null;
+  }) {
+    const updatedReading = await this.db
+      .update(meterReadings)
+      .set({
+        prevKwhReading: params.prevKwhReading,
+        prevKwhReadingId: params.prevKwhReadingId,
+      })
+      .where(eq(meterReadings.id, params.readingId))
+      .returning();
+    return updatedReading[0];
   }
 }

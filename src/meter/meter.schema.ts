@@ -80,6 +80,8 @@ export const meterReadings = pgTable('meter_readings', {
     .references(() => meters.id),
   readingDate: timestamp('reading_date').notNull(),
   kwhReading: numeric('kwh_reading').notNull(),
+  prevKwhReading: numeric('prev_kwh_reading').notNull().default('0'),
+  prevKwhReadingId: uuid('prev_kwh_reading_id'),
   kwhConsumption: numeric('kwh_consumption').notNull(), // consumption for the period
   tariffId: uuid('tariff_id'),
   tariff: numeric('tariff'),

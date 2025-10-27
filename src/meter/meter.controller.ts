@@ -86,6 +86,19 @@ export class MeterController {
     return this.meterService.listMeters(filter);
   }
 
+  @Get('/fix-prev-readings')
+  @ApiOperation({
+    summary: 'Fix previous readings for all meters',
+    description: 'Fixes the previous readings for all meters in the system.',
+  })
+  @ApiOkResponse({
+    description: 'The previous readings have been successfully fixed.',
+    type: Boolean,
+  })
+  async fixPreviousReadings(): Promise<boolean> {
+    return this.meterService.fixAllMetersReadingsPreviousReading();
+  }
+
   @Get('/reading-exceptions')
   @ApiOperation({
     summary:

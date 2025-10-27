@@ -834,8 +834,14 @@ export class MeterService {
         areaId: meter.areaId!,
         consumptionDate: createMeterReadingDto.readingDate,
       });
+    const lastMeterReading =
+      await this.meterReadingService.getMeterCurrentReading(id);
     await this.meterReadingService.createReading({
       ...createMeterReadingDto,
+      prevKwhReadingId: lastMeterReading ? lastMeterReading.id : null,
+      prevKwhReading: lastMeterReading
+        ? Number(lastMeterReading.kwhReading)
+        : 0,
       kwhConsumption,
       meterId: meter.id,
       meterNumber: meter.meterNumber,
@@ -973,6 +979,12 @@ export class MeterService {
       readingId,
       updateData: {
         kwhReading: editMeterReadingDto.kwhReading.toString(),
+        prevKwhReadingId: readingPreviousReading
+          ? readingPreviousReading.id
+          : null,
+        prevKwhReading: readingPreviousReading
+          ? readingPreviousReading.kwhReading
+          : '0',
         kwhConsumption: readingConsumption.toString(),
         meterImage: editMeterReadingDto.meterImage,
         tariff: consumptionTariff ? String(consumptionTariff.tariff) : null,
@@ -1016,6 +1028,8 @@ export class MeterService {
         readingId: readingNextReading.id,
         updateData: {
           kwhConsumption: nextReadingConsumption.toString(),
+          prevKwhReadingId: readingUpdatedReading.id,
+          prevKwhReading: readingUpdatedReading.kwhReading,
           tariff: nextReadingConsumptionTariff
             ? String(nextReadingConsumptionTariff.tariff)
             : null,
@@ -1078,6 +1092,31 @@ export class MeterService {
     return true;
   }
 
+  async getMeterDerivedMeterIds({
+    meterId,
+  }: {
+    meterId: string;
+  }): Promise<string[]> {
+    const derivedMeterIds: string[] = [];
+    const meterAsReferenceDerivedMeters = await this.db.query.meters.findMany({
+      where: eq(meters.calculationReferenceMeterId, meterId),
+    });
+    if (meterAsReferenceDerivedMeters.length > 0) {
+      const ids = meterAsReferenceDerivedMeters.map((m) => m.id);
+      derivedMeterIds.push(...ids);
+    }
+    const meterAsSubDerivedMeters = await this.db.query.meterSubmeters.findMany(
+      {
+        where: eq(meterSubmeters.subMeterId, meterId),
+      },
+    );
+    if (meterAsSubDerivedMeters.length > 0) {
+      const ids = meterAsSubDerivedMeters.map((m) => m.id);
+      derivedMeterIds.push(...ids);
+    }
+    return derivedMeterIds;
+  }
+
   // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async calculateMeterDerivedMeterConsumption(params: {
     meterId: string;
@@ -1089,23 +1128,9 @@ export class MeterService {
     const pastWindowHour = new Date(
       readingDate.getTime() - windowHours * 60 * 60 * 1000,
     );
-    const derivedMeterIds: string[] = [];
-    const meterAsReferenceDerivedMeters = await this.db.query.meters.findMany({
-      where: eq(meters.calculationReferenceMeterId, params.meterId),
+    const derivedMeterIds: string[] = await this.getMeterDerivedMeterIds({
+      meterId: params.meterId,
     });
-    if (meterAsReferenceDerivedMeters.length > 0) {
-      const ids = meterAsReferenceDerivedMeters.map((m) => m.id);
-      derivedMeterIds.push(...ids);
-    }
-    const meterAsSubDerivedMeters = await this.db.query.meterSubmeters.findMany(
-      {
-        where: eq(meterSubmeters.subMeterId, params.meterId),
-      },
-    );
-    if (meterAsSubDerivedMeters.length > 0) {
-      const ids = meterAsSubDerivedMeters.map((m) => m.id);
-      derivedMeterIds.push(...ids);
-    }
     if (derivedMeterIds.length == 0) return;
     const derivedMeters = await this.db.query.meters.findMany({
       where: and(
@@ -1172,9 +1197,14 @@ export class MeterService {
           areaId: derivedMeter.areaId,
           consumptionDate: readingDate,
         });
+      const prevReading = await this.meterReadingService.getMeterCurrentReading(
+        derivedMeter.id,
+      );
       await this.meterReadingService.createReading({
         meterImage: 'N/A',
         kwhReading: 0,
+        prevKwhReadingId: prevReading ? prevReading.id : null,
+        prevKwhReading: 0,
         readingDate: new Date(readingDate),
         kwhConsumption,
         meterId: derivedMeter.id,
@@ -1512,5 +1542,35 @@ export class MeterService {
       .where(eq(meters.id, id))
       .returning()
       .then((result) => result.length > 0);
+  }
+
+  async fixAllMetersReadingsPreviousReading(): Promise<boolean> {
+    const allMeters = await this.db.query.meters.findMany();
+    const fixPromises = allMeters.map(async (meter) => {
+      const allMeterReadings =
+        await this.meterReadingService.getAllReadingsInDecendingOrderByMeterId(
+          meter.id,
+        );
+      const lastIndex = allMeterReadings.length - 1;
+      const readingPromises = allMeterReadings.map(async (reading, index) => {
+        if (index == lastIndex) {
+          await this.meterReadingService.updateReadingPreviousReading({
+            readingId: reading.id,
+            prevKwhReading: '0',
+            prevKwhReadingId: null,
+          });
+        } else {
+          const prevReading = allMeterReadings[index + 1];
+          await this.meterReadingService.updateReadingPreviousReading({
+            readingId: reading.id,
+            prevKwhReading: prevReading.kwhReading,
+            prevKwhReadingId: prevReading.id,
+          });
+        }
+      });
+      await Promise.all(readingPromises);
+    });
+    await Promise.all(fixPromises);
+    return true;
   }
 }
