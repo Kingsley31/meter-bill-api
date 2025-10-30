@@ -370,6 +370,9 @@ export class BillProcessor implements Processor {
           lastReadDate: dateToMDYNumeric(new Date(breakdown.lastReadDate)),
         };
       });
+    const meterAreaBankDetails = await this.areaBillService.getAreaBankDetails(
+      params.data.areaId!,
+    );
     const meterBill: GeneratedBill = {
       invoiceNumber,
       totalAmountDue: totalAmountDue.toLocaleString(),
@@ -385,6 +388,7 @@ export class BillProcessor implements Processor {
     const billPDFPayload: BillPDFPayload = {
       bill: meterBill,
       billBreakdowns: meterBillBreakdowns,
+      bankDetails: meterAreaBankDetails,
     };
     const pdfFileKey = await this.generateAndUploadBillPdf(billPDFPayload);
     const createdBill = await this.billService.createBill({

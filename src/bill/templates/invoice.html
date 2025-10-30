@@ -91,9 +91,9 @@
         <p><b>Quote is exclusive of VAT.</b></p>
         {{#unless bill.isConsolidated}}
             <p><b>Please make all checks payable to:</b></p>
-            <p><b>Bank: GTBANK  </b></p>
-            <p><b>Account Number: 0762326405</b></p>
-            <p><b>Account Name: ENERGY MIX TECHNOLOGIES INTERNATIONAL LTD</b></p>
+            <p><b>Bank: {{bankDetails.bankName}} </b></p>
+            <p><b>Account Number: {{bankDetails.bankAccountNumber}}</b></p>
+            <p><b>Account Name: {{bankDetails.bankAccountName}}</b></p>
         {{/unless}}
         <p style="margin-top: 2em;">Thank you for your business!</p>
         <p>Yours Faithfully</p>

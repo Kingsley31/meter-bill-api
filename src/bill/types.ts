@@ -29,9 +29,17 @@ export type GeneratedBill = {
   recipientType: string;
 };
 
+export type BankDetails = {
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankName: string;
+  bankCode: string;
+};
+
 export type BillPDFPayload = {
   billBreakdowns: GeneratedBillBreakdown[];
   recipient?: GeneratdBillRecipient; // optional
+  bankDetails?: BankDetails; // optional
   bill: GeneratedBill;
 };
 

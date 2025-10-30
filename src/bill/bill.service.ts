@@ -36,6 +36,7 @@ import { BillStatsResponseDto } from './dtos/bill-stats.response.dto';
 import { PaymentStatus } from './bill.enum';
 import { BillBreakdownService } from './bill-breakdown/bill-breakdown.service';
 import { ListBillBreakdownQueryDto } from './bill-breakdown/dtos/list-meter-reading-dto';
+import { AreaBillService } from 'src/area/area-bill.service';
 
 @Injectable()
 export class BillService {
@@ -43,6 +44,7 @@ export class BillService {
     @Inject(BILL_PROCESSORS_QUEUENAME) private readonly imQueue: IMQueue,
     private readonly billGenerationRequestService: BillGenerationRequestService,
     private readonly meterBillService: MeterBillService,
+    private readonly areaBillService: AreaBillService,
     private readonly customerMeterBillService: CustomerMeterBillService,
     @Inject(DATABASE) private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly fileSevice: FileService,
@@ -71,6 +73,14 @@ export class BillService {
     if (requestExist) {
       throw new BadRequestException(
         `This bill genration requst already exists.`,
+      );
+    }
+    const areaHasBankDetails = await this.areaBillService.areaHasBankDetails(
+      billRequest.areaId!,
+    );
+    if (!areaHasBankDetails) {
+      throw new BadRequestException(
+        'Bank details has not been set for this area, please set the area bank details and try again.',
       );
     }
     const someReadingsMissingTarriff =
