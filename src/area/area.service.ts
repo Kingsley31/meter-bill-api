@@ -23,6 +23,7 @@ import { AreaUpdatedEvent } from 'src/event/event-types/area/area-updated.event'
 import { TariffService } from 'src/tariff/tariff.service';
 import { AreaTariffCreatedEvent } from 'src/event/event-types/tariff/area-tariff-created.event';
 import { AreaPayload } from 'src/event/event-types/area/area.payload';
+import { UpdateAreaBankDetailsDto } from './dtos/update-area-bank-details.dto';
 
 @Injectable()
 export class AreaService {
@@ -228,5 +229,17 @@ export class AreaService {
     filter: ListAreaLeaderQueryDto,
   ): Promise<PaginatedResponseDto<AreaLeaderResponseDto>> {
     return this.areaLeaderService.listAreaLeaders(id, filter);
+  }
+
+  async updateAreaBankDetail(
+    id: string,
+    body: UpdateAreaBankDetailsDto,
+  ): Promise<boolean> {
+    await this.db
+      .update(areas)
+      .set({ ...body })
+      .where(eq(areas.id, id))
+      .returning();
+    return true;
   }
 }

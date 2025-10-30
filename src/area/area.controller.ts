@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { AreaService } from './area.service';
 import {
   ApiBody,
@@ -17,6 +25,7 @@ import { ListAreaQueryDto } from './dtos/list-area.dto';
 import { AssignAreaToLeaderDto } from './dtos/assign-area-to-leader.dto';
 import { AreaLeaderResponseDto } from './dtos/area-leader.response.dto';
 import { ListAreaLeaderQueryDto } from './dtos/list-area-leader.dto';
+import { UpdateAreaBankDetailsDto } from './dtos/update-area-bank-details.dto';
 
 @ApiTags('areas')
 @Controller('areas')
@@ -80,6 +89,28 @@ export class AreaController {
   })
   async getAreaById(@Param('id') id: string): Promise<AreaResponseDto> {
     return this.areaService.getAreaById({ areaId: id });
+  }
+
+  @Patch(':id/bank-details')
+  @ApiOperation({
+    summary: 'Update an Area bank details',
+    description: 'Update an Area bank details for bill payment by area ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the area',
+    type: String,
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  @ApiOkResponse({
+    description: 'Area bank details updated successfully.',
+    type: Boolean,
+  })
+  async updateAreaBankDetail(
+    @Param('id') id: string,
+    @Body() body: UpdateAreaBankDetailsDto,
+  ) {
+    return this.areaService.updateAreaBankDetail(id, body);
   }
 
   @Post(':id/leaders')

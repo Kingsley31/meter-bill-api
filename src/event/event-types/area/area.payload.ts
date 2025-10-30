@@ -7,6 +7,10 @@ export type AreaPayload = {
   country: string;
   totalMeters: number;
   type: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankName: string | null;
+  bankCode: string | null;
   currentTariff: number;
   totalKwhReading?: number | null;
   totalKwhConsumption?: number | null;

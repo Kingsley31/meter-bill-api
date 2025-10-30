@@ -52,6 +52,34 @@ export class AreaResponseDto {
   type?: string | null;
 
   @ApiPropertyOptional({
+    description: 'Bank Accoount Name.',
+    example: 'Ufoegbulam Chukwuemeka Kingsley',
+    nullable: true,
+  })
+  bankAccountName: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Bank Accoount Number.',
+    example: '0792007454',
+    nullable: true,
+  })
+  bankAccountNumber: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Bank Name.',
+    example: 'Access Bank',
+    nullable: true,
+  })
+  bankName: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Bank Code.',
+    example: '022',
+    nullable: true,
+  })
+  bankCode: string | null;
+
+  @ApiPropertyOptional({
     description: 'Current tariff for the area',
     type: Number,
     example: 45.5,
