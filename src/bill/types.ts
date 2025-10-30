@@ -21,6 +21,8 @@ export type GeneratedBill = {
   requestId: string;
   generateByUserId: string;
   generateByUserName: string;
+  startDate: string;
+  endDate: string;
   createdAt: string;
   totalAmountDue: string;
   isConsolidated: boolean;

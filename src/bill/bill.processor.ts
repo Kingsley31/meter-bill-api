@@ -41,6 +41,7 @@ import { SingleMeterBillGeneratedEvent } from 'src/event/event-types/bill/single
 import { AreaBillService } from 'src/area/area-bill.service';
 import { AreaConsolidatedBillGeneratedEvent } from 'src/event/event-types/bill/area-consolidated-bill-generated.event';
 import { CustomerConsolidatedBillGeneratedEvent } from 'src/event/event-types/bill/customer-consolidated-bill-generated.event';
+import { dateToDMYAbbrev, dateToMDYNumeric } from 'src/common/utils';
 
 @Injectable()
 @ProcessQueue(BILL_PROCESSORS_QUEUENAME)
@@ -126,14 +127,6 @@ export class BillProcessor implements Processor {
       );
     if (customerReadingBreakdowns.length == 0) return;
     const dateGenerated = new Date();
-    const formattedDateGenerated = dateGenerated
-      .toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-      .replace(',', '')
-      .replace(' ', '-');
     const invoiceNumber = await this.generateInvoiceNumber();
     let totalAmountDue = new Decimal(0);
     const customerBillBreakdowns: GeneratedBillBreakdown[] =
@@ -146,20 +139,15 @@ export class BillProcessor implements Processor {
           totalAmount: breakdown.totalAmount.toLocaleString(),
           firstReadKwh: breakdown.firstReadKwh,
           firstReadDate: new Date(breakdown.initialReadDate),
-          lastReadDate: new Date(breakdown.lastReadDate).toLocaleDateString(
-            'en-US',
-            {
-              month: 'numeric',
-              day: 'numeric',
-              year: 'numeric',
-            },
-          ),
+          lastReadDate: dateToMDYNumeric(new Date(breakdown.lastReadDate)),
         };
       });
     const customerBill: GeneratedBill = {
       invoiceNumber,
       totalAmountDue: totalAmountDue.toLocaleString(),
-      createdAt: formattedDateGenerated,
+      startDate: dateToDMYAbbrev(data.startDate),
+      endDate: dateToDMYAbbrev(data.endDate),
+      createdAt: dateToDMYAbbrev(dateGenerated),
       requestId: data.xRequestId,
       generateByUserId: data.requestedByUserId,
       generateByUserName: data.requestedByUserName,
@@ -174,7 +162,7 @@ export class BillProcessor implements Processor {
       billBreakdowns: customerBillBreakdowns,
       recipient: generatedRecipient,
     };
-    const pdfFileKey = await this.generateBillPdf(billPDFPayload);
+    const pdfFileKey = await this.generateAndUploadBillPdf(billPDFPayload);
     const createdBill = await this.billService.createBill({
       ...customerBill,
       startDate: data.startDate,
@@ -240,14 +228,6 @@ export class BillProcessor implements Processor {
       });
     if (areaReadingBreakdowns.length == 0) return;
     const dateGenerated = new Date();
-    const formattedDateGenerated = dateGenerated
-      .toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-      .replace(',', '')
-      .replace(' ', '-');
     const invoiceNumber = await this.generateInvoiceNumber();
     let totalAmountDue = new Decimal(0);
     const areaBillBreakdowns: GeneratedBillBreakdown[] =
@@ -260,20 +240,15 @@ export class BillProcessor implements Processor {
           totalAmount: breakdown.totalAmount.toLocaleString(),
           firstReadKwh: breakdown.firstReadKwh,
           firstReadDate: new Date(breakdown.initialReadDate),
-          lastReadDate: new Date(breakdown.lastReadDate).toLocaleDateString(
-            'en-US',
-            {
-              month: 'numeric',
-              day: 'numeric',
-              year: 'numeric',
-            },
-          ),
+          lastReadDate: dateToMDYNumeric(new Date(breakdown.lastReadDate)),
         };
       });
     const areaBill: GeneratedBill = {
       invoiceNumber,
       totalAmountDue: totalAmountDue.toLocaleString(),
-      createdAt: formattedDateGenerated,
+      startDate: dateToDMYAbbrev(data.startDate),
+      endDate: dateToDMYAbbrev(data.endDate),
+      createdAt: dateToDMYAbbrev(dateGenerated),
       requestId: data.xRequestId,
       generateByUserId: data.requestedByUserId,
       generateByUserName: data.requestedByUserName,
@@ -289,7 +264,7 @@ export class BillProcessor implements Processor {
       billBreakdowns: areaBillBreakdowns,
       recipient: generatedRecipient,
     };
-    const pdfFileKey = await this.generateBillPdf(billPDFPayload);
+    const pdfFileKey = await this.generateAndUploadBillPdf(billPDFPayload);
     const createdBill = await this.billService.createBill({
       ...areaBill,
       startDate: data.startDate,
@@ -380,14 +355,6 @@ export class BillProcessor implements Processor {
       });
     if (meterReadingBreakdowns.length == 0) return;
     const dateGenerated = new Date();
-    const formattedDateGenerated = dateGenerated
-      .toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-      .replace(',', '')
-      .replace(' ', '-');
     const invoiceNumber = await this.generateInvoiceNumber();
     let totalAmountDue = new Decimal(0);
     const meterBillBreakdowns: GeneratedBillBreakdown[] =
@@ -400,20 +367,15 @@ export class BillProcessor implements Processor {
           totalAmount: breakdown.totalAmount.toLocaleString(),
           firstReadKwh: breakdown.firstReadKwh,
           firstReadDate: new Date(breakdown.initialReadDate),
-          lastReadDate: new Date(breakdown.lastReadDate).toLocaleDateString(
-            'en-US',
-            {
-              month: 'numeric',
-              day: 'numeric',
-              year: 'numeric',
-            },
-          ),
+          lastReadDate: dateToMDYNumeric(new Date(breakdown.lastReadDate)),
         };
       });
     const meterBill: GeneratedBill = {
       invoiceNumber,
       totalAmountDue: totalAmountDue.toLocaleString(),
-      createdAt: formattedDateGenerated,
+      startDate: dateToDMYAbbrev(params.data.startDate),
+      endDate: dateToDMYAbbrev(params.data.endDate),
+      createdAt: dateToDMYAbbrev(dateGenerated),
       requestId: params.data.xRequestId,
       generateByUserId: params.data.requestedByUserId,
       generateByUserName: params.data.requestedByUserName,
@@ -424,7 +386,7 @@ export class BillProcessor implements Processor {
       bill: meterBill,
       billBreakdowns: meterBillBreakdowns,
     };
-    const pdfFileKey = await this.generateBillPdf(billPDFPayload);
+    const pdfFileKey = await this.generateAndUploadBillPdf(billPDFPayload);
     const createdBill = await this.billService.createBill({
       ...meterBill,
       startDate: params.data.startDate,
@@ -515,7 +477,7 @@ export class BillProcessor implements Processor {
     );
   }
 
-  async generateBillPdf(data: BillPDFPayload) {
+  async generateAndUploadBillPdf(data: BillPDFPayload) {
     const hbsHtml = readFileSync(
       resolve(__dirname, 'templates', 'invoice.html'),
       'utf8',

@@ -39,6 +39,9 @@
         </div>
         <div style="display: flex;flex-direction: row;align-items: end;justify-content: space-between;background-color: #577188;color: #ffff;padding-top: 1px;padding-bottom: 1px;">
             <p style="padding-left: 5px;">Invoice No.: {{bill.invoiceNumber}}</p>
+            <div>
+                Period: {{bill.startDate}} - {{bill.endDate}}
+            </div>
             <p style="padding-right: 5px;">Date: {{bill.createdAt}}</p>
         </div>
         {{#if recipient}}
