@@ -777,7 +777,7 @@ export class MeterService {
     this.updateMeterLastBillDetails(event.data.meterId, {
       lastBillAmount: Number(event.data.bill.totalAmountDue),
       lastBillKwhConsumption: 0,
-      lastBillDate: event.data.bill.createdAt,
+      lastBillDate: event.data.bill.endDate,
     }).catch((e) => console.error(e));
   }
 
