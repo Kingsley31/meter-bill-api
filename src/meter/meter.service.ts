@@ -65,6 +65,7 @@ import { AreaTariffCreatedEvent } from 'src/event/event-types/tariff/area-tariff
 import { AreaTariffPayload } from 'src/event/event-types/tariff/area-tariff.payload';
 import { AreaTariffUpdatedEvent } from 'src/event/event-types/tariff/area-tariff-updated.event';
 import { Decimal } from 'decimal.js';
+import { SingleMeterBillGeneratedEvent } from 'src/event/event-types/bill/single-meter-bill-generated.event';
 
 @Injectable()
 export class MeterService {
@@ -769,6 +770,15 @@ export class MeterService {
     this.updateMeterConsumptionTariff(event.data).catch((e) =>
       console.error(e),
     );
+  }
+
+  @Subscribe(EventType.SINGLE_METER_BILL_GENERATED)
+  onSingleMeterBillGenerated(event: SingleMeterBillGeneratedEvent) {
+    this.updateMeterLastBillDetails(event.data.meterId, {
+      lastBillAmount: Number(event.data.bill.totalAmountDue),
+      lastBillKwhConsumption: 0,
+      lastBillDate: event.data.bill.createdAt,
+    }).catch((e) => console.error(e));
   }
 
   async updateMeterConsumptionTariff(data: MeterTariffPayload) {
