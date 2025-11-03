@@ -27,6 +27,14 @@ export class EditMeterDto {
   @IsBoolean()
   hasMaxKwhReading: boolean;
 
+  @ApiProperty({
+    description: 'Indicates if meter is included in tariff calculation',
+    type: Boolean,
+    example: false,
+  })
+  @IsBoolean()
+  includedInTariffCalculation: boolean;
+
   @ApiPropertyOptional({
     description: 'Maximum kWh reading',
     type: Number,

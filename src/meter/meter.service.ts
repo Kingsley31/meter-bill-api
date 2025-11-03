@@ -26,7 +26,7 @@ import {
   notInArray,
 } from 'drizzle-orm';
 import { ListUnreadMeterQueryDto } from './dtos/list-unread-meter.dto';
-import { MeterType, Operaor } from './enums';
+import { MeterPurpose, MeterType, Operaor } from './enums';
 import { MeterStatsResponseDto } from './dtos/meter-stats.response.dto';
 import { UpdateMeterStatusDto } from './dtos/update-meter-status.dto';
 import { UpdateMeterAreaDto } from './dtos/update-meter-area.dto';
@@ -84,8 +84,29 @@ export class MeterService {
         'A meter with this meterNumber already exists.',
       );
     }
+
+    if (
+      createMeterDto.purpose != MeterPurpose.CONSUMER &&
+      !!createMeterDto.auditMeterId
+    ) {
+      throw new BadRequestException(
+        'Only consumer meters can be linked to an audit meter',
+      );
+    }
+    let auditMeter: typeof meters.$inferSelect | undefined;
+    if (createMeterDto.purpose == MeterPurpose.CONSUMER) {
+      auditMeter = await this.db.query.meters.findFirst({
+        where: eq(meters.id, createMeterDto.auditMeterId!),
+      });
+      if (!auditMeter) {
+        throw new BadRequestException(
+          'No audit meter found. Please specify the correct audit meter and try again.',
+        );
+      }
+    }
     const data = {
       ...createMeterDto,
+      auditMeterNumber: auditMeter ? auditMeter.meterNumber : null,
       ctRating: String(createMeterDto.ctRating),
       ctMultiplierFactor: String(createMeterDto.ctMultiplierFactor),
       purpose: createMeterDto.purpose as string,
@@ -150,6 +171,7 @@ export class MeterService {
         ctMultiplierFactor: editMeterDto.ctMultiplierFactor.toString(),
         hasMaxKwhReading: editMeterDto.hasMaxKwhReading,
         maxKwhReading: editMeterDto.maxKwhReading?.toString(),
+        includedInTariffCalculation: editMeterDto.includedInTariffCalculation,
       })
       .where(eq(meters.id, meterId))
       .returning();

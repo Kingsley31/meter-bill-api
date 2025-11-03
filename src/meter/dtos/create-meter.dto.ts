@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   IsUUID,
   ValidateIf,
@@ -92,6 +93,17 @@ export class CreateMeterDto {
   @IsEnum(MeterPurpose)
   purpose: MeterPurpose;
 
+  @ApiPropertyOptional({
+    description:
+      'Audit meter ID this meter is linked to (applicable if purpose is CONSUMER)',
+    format: 'uuid',
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+  })
+  @ValidateIf((o: CreateMeterDto) => o.purpose === MeterPurpose.CONSUMER)
+  @IsOptional()
+  @IsUUID()
+  auditMeterId?: string | null;
+
   @ApiProperty({
     description: 'Type of the meter',
     enum: MeterType,
@@ -121,6 +133,14 @@ export class CreateMeterDto {
   })
   @IsBoolean()
   hasMaxKwhReading: boolean;
+
+  @ApiProperty({
+    description: 'Indicates if meter is included in tariff calculation',
+    type: Boolean,
+    example: false,
+  })
+  @IsBoolean()
+  includedInTariffCalculation: boolean;
 
   @ApiPropertyOptional({
     description: 'Maximum kWh reading',

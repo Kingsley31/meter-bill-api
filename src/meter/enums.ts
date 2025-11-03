@@ -13,4 +13,6 @@ export enum MeterPurpose {
   CONSUMER = 'consumer',
   AUDIT = 'audit',
   BULK = 'bulk',
+  PUBLIC_POWER = 'public_power',
+  GENERATOR_POWER = 'generator_power',
 }

@@ -23,11 +23,16 @@ export const meters = pgTable('meters', {
   totalCustomers: numeric('total_customers').default('0').notNull(),
   ctRating: numeric('ct_rating').notNull(),
   ctMultiplierFactor: numeric('ct_multiplier_factor').notNull(), //used for calculating consumtion
-  purpose: varchar('purpose').notNull(), // consumer, audit, bulk
+  purpose: varchar('purpose').notNull(), // consumer, audit, bulk, public power, generator power
+  auditMeterId: varchar('audit_meter_id'), // id of the audit meter this meter is linked to
+  auditMeterNumber: varchar('audit_meter_number'),
   type: varchar('type').notNull(), //measurement, calculated
   calculationReferenceMeterId: uuid('calculation_reference_meter_id'), // used for calculated meters
   hasMaxKwhReading: boolean('has_max_kwh_reading').default(true).notNull(),
   maxKwhReading: numeric('max_kwh_reading'),
+  includedInTariffCalculation: boolean('included_in_tariff_calculation')
+    .default(false)
+    .notNull(),
   tariff: numeric('tariff'), // Current Meer Tariff
   currentKwhReading: numeric('current_kwh_reading'),
   currentKwhReadingDate: timestamp('current_kwh_reading_date'),

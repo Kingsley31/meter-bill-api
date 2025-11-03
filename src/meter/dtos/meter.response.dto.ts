@@ -73,6 +73,21 @@ export class MeterResponseDto {
   })
   purpose: MeterPurpose;
 
+  @ApiPropertyOptional({
+    description:
+      'Audit meter ID this meter is linked to (applicable if purpose is CONSUMER)',
+    format: 'uuid',
+    example: 'f7a9e2e1-8c2d-4e3a-9c2d-1e2a3b4c5d6f',
+    nullable: true,
+  })
+  auditMeterId?: string | null;
+
+  @ApiProperty({
+    description: 'Audit Meter number',
+    example: '1234567890',
+  })
+  auditMeterNumber?: string | undefined;
+
   @ApiProperty({
     description: 'Type of the meter',
     enum: MeterType,
@@ -86,6 +101,13 @@ export class MeterResponseDto {
     example: true,
   })
   hasMaxKwhReading: boolean;
+
+  @ApiProperty({
+    description: 'Indicates if meter is included in tariff calculation',
+    type: Boolean,
+    example: false,
+  })
+  includedInTariffCalculation: boolean;
 
   @ApiPropertyOptional({
     description: 'Maximum kWh reading',
